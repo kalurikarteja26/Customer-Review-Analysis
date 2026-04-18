@@ -1,35 +1,37 @@
-import React, { createContext, useState } from 'react';
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navigation from './components/Navigation';
-import ProductHero from './components/ProductHero';
-import SentimentAnalyzer from './components/SentimentAnalyzer';
-import InsightDashboard from './components/InsightDashboard';
-
-// Create a global context for product data and analysis state
-export const AppContext = createContext();
+import ProductIngestor from './components/ProductIngestor';
+import ProductDisplay from './pages/ProductDisplay';
+import ErrorBoundary from './components/ErrorBoundary';
+import CatalogGallery from './components/CatalogGallery';
 
 function App() {
-  const [analysisResult, setAnalysisResult] = useState(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-
   return (
-    <AppContext.Provider value={{ analysisResult, setAnalysisResult, isAnalyzing, setIsAnalyzing }}>
-      <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-        <Navigation />
-        
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-          {/* Header section with product info */}
-          <ProductHero />
+    <BrowserRouter>
+      <ErrorBoundary>
+        <div className="min-h-screen bg-background text-textMain flex flex-col font-sans selection:bg-primary/30">
+          <Navigation />
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Input and immediate result module */}
-            <SentimentAnalyzer />
-            
-            {/* Extended dashboard data module */}
-            <InsightDashboard />
-          </div>
-        </main>
-      </div>
-    </AppContext.Provider>
+          <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6">
+            <Routes>
+              {/* Home Page Route */}
+              <Route path="/" element={
+                 <section className="w-full h-auto mt-12 flex flex-col items-center">
+                    <div className="w-full max-w-3xl">
+                       <ProductIngestor />
+                       <CatalogGallery />
+                    </div>
+                 </section>
+              } />
+
+              {/* Dynamic Product Route */}
+              <Route path="/product/:productId" element={<ProductDisplay />} />
+            </Routes>
+          </main>
+        </div>
+      </ErrorBoundary>
+    </BrowserRouter>
   );
 }
 

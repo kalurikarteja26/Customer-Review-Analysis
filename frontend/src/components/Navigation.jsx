@@ -1,44 +1,24 @@
 import React from 'react';
-import { Search, Bell, UserCircle, Hexagon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Triangle } from 'lucide-react';
 
 const Navigation = () => {
+  const navigate = useNavigate();
+
   return (
-    <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="bg-surface border-b border-white/10 sticky top-0 z-50 shadow-2xl">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo element */}
-          <div className="flex items-center gap-2">
-            <Hexagon className="h-8 w-8 text-blue-600 fill-blue-600/20" />
-            <span className="font-bold text-xl tracking-tight text-slate-900">Sentix<span className="text-blue-600">Prime</span></span>
-          </div>
-
-          {/* Global search simulating ElasticSearch */}
-          <div className="flex-1 max-w-2xl px-8 hidden md:block">
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-              </div>
-              <input
-                type="text"
-                className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
-                placeholder="Search products by SKU, category, or keyword..."
-              />
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                <span className="text-xs text-slate-400 border border-slate-200 rounded px-1.5 py-0.5">⌘K</span>
-              </div>
+          {/* Logo element mapped to Home */}
+          <button onClick={() => navigate('/')} className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-primary/20 rounded flex items-center justify-center border border-primary/50 relative overflow-hidden">
+                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-primary/20 blur-sm"></div>
+                <Triangle className="h-5 w-5 text-primary fill-primary/50 rotate-180" />
             </div>
-          </div>
-
-          {/* Right actions */}
-          <div className="flex items-center gap-4 text-slate-500">
-            <button className="hover:text-slate-900 transition-colors relative p-1">
-              <Bell className="h-6 w-6" />
-              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-rose-500 border-2 border-white"></span>
-            </button>
-            <button className="hover:text-slate-900 transition-colors p-1">
-              <UserCircle className="h-7 w-7" />
-            </button>
-          </div>
+            <span className="font-bold text-xl tracking-widest uppercase text-white font-mono">
+                Universal<span className="text-primary font-black">Sentinel</span>
+            </span>
+          </button>
         </div>
       </div>
     </nav>
