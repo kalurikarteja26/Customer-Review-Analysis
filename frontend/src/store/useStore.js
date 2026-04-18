@@ -17,7 +17,7 @@ const useStore = create((set, get) => ({
         
         try {
             const sync = get().liveSyncEnabled;
-            const response = await axios.post('http://127.0.0.1:5000/fetch-product-intelligence', {
+            const response = await axios.post('https://customer-review-analysis-3.onrender.com/fetch-product-intelligence', {
                 url: url,
                 sync_live: sync
             });
