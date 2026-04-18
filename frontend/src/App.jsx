@@ -1,4 +1,5 @@
 import React from 'react';
+const API_URL = "https://customer-review-analysis-3.onrender.com";
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navigation from './components/Navigation';
 import ProductIngestor from './components/ProductIngestor';
