@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 
 class Review(BaseModel):
     author: Optional[str] = "Anonymous"
@@ -20,8 +20,8 @@ class Recommendation(BaseModel):
 class Product(BaseModel):
     id: Optional[str] = ""
     title: Optional[str] = ""
-    price: Optional[str] = ""
-    original_price: Optional[str] = ""
+    price: Optional[Union[str, float, int]] = ""
+    original_price: Optional[Union[str, float, int]] = ""
     discount_percentage: Optional[int] = 0
     currency: Optional[str] = "INR"
     rating: Optional[float] = 0.0
@@ -42,6 +42,33 @@ class Product(BaseModel):
     recommendation: Optional[Recommendation] = None
     is_best_product: Optional[bool] = False
 
+class PlatformVariant(BaseModel):
+    platform: str
+    price: Union[str, float, int]
+    original_price: Optional[Union[str, float, int]] = "N/A"
+    discount_percentage: int = 0
+    url: str
+    rating: float = 0.0
+    review_count: int = 0
+
+class CanonicalProduct(BaseModel):
+    id: str
+    title: str
+    brand: Optional[str] = ""
+    category: Optional[str] = ""
+    tags: Optional[List[str]] = []
+    image: str
+    avg_rating: float = 0.0
+    total_reviews: int = 0
+    min_price: float = 0.0
+    max_price: float = 0.0
+    best_platform: str = ""
+    variants: List[PlatformVariant] = []
+    recommendation: Optional[Recommendation] = None
+    feature_match_scores: Optional[Dict[str, int]] = {}
+    embeddings: Optional[List[float]] = []
+    is_best_product: Optional[bool] = False
+
 class AnalysisRequest(BaseModel):
     url: str
     category: Optional[str] = "General"
@@ -56,7 +83,9 @@ class ComparisonRequest(BaseModel):
 class SearchResponse(BaseModel):
     status: str = "success"
     query: str = ""
-    products: List[Product] = []
+    canonical_products: List[CanonicalProduct] = []
+    # Keep products for backward compatibility if needed, but we'll use canonical_products
+    products: List[Product] = [] 
     best_product: Optional[Product] = None
 
 class AnalysisResponse(BaseModel):

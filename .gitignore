@@ -49,3 +49,8 @@ yarn-error.log*
 
 # Local tunnel / runtime artifacts
 *.pid
+*.db
+scraper/*.json
+scraper/*.txt
+scraper/debug_*.js
+backend/static/images/*.jpg

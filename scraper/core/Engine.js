@@ -2,6 +2,7 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { cleanUrl } from '../utils/cleanUrl.js';
 import { detectPlatform } from '../utils/detector.js';
+import { BrowserManager } from '../utils/BrowserManager.js';
 
 import { AmazonExtractor } from '../extractors/AmazonExtractor.js';
 import { FlipkartExtractor } from '../extractors/flipkartExtractor.js';
@@ -9,10 +10,15 @@ import { MeeshoExtractor } from '../extractors/meeshoExtractor.js';
 import { MyntraExtractor } from '../extractors/myntraExtractor.js';
 import { AjioExtractor } from '../extractors/ajioExtractor.js';
 import { SnapdealExtractor } from '../extractors/snapdealExtractor.js';
+
 import { AmazonSearcher } from '../searchers/AmazonSearcher.js';
 import { FlipkartSearcher } from '../searchers/FlipkartSearcher.js';
+import { AjioSearcher } from '../searchers/AjioSearcher.js';
+import { SnapdealSearcher } from '../searchers/SnapdealSearcher.js';
+import { MeeshoSearcher } from '../searchers/MeeshoSearcher.js';
+import { MyntraSearcher } from '../searchers/MyntraSearcher.js';
 
-// Realistic browser User-Agents to rotate and avoid bot detection
+// Realistic browser User-Agents
 const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -20,10 +26,6 @@ const USER_AGENTS = [
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
 ];
 
-/**
- * Fetches HTML from a URL with full anti-bot headers.
- * Returns the raw HTML string, or throws on network error.
- */
 async function fetchHtml(url, ua) {
     const response = await axios.get(url, {
         headers: {
@@ -32,128 +34,115 @@ async function fetchHtml(url, ua) {
             'Accept-Language': 'en-IN,en-US;q=0.9,en;q=0.8',
             'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'none',
-            'Sec-Fetch-User': '?1',
-            'Cache-Control': 'max-age=0',
-            'DNT': '1',
-            'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"Windows"',
         },
-        timeout: 30000, // 30 seconds per request
-        maxRedirects: 5,
-        decompress: true,
+        timeout: 30000,
     });
     return response.data;
 }
 
-/**
- * Extracts public Amazon reviews from the dedicated /product-reviews/ page.
- * This page is server-rendered and does NOT require JavaScript.
- */
 async function fetchAmazonReviews(asin, origin, ua) {
     const reviewsUrl = `${origin}/product-reviews/${asin}?pageNumber=1&sortBy=recent`;
     try {
         const html = await fetchHtml(reviewsUrl, ua);
         const $ = cheerio.load(html);
         const reviews = [];
-
         $('div[data-hook="review"]').each((i, el) => {
             if (i >= 10) return;
             const author = $(el).find('[data-hook="review-author"], .a-profile-name').first().text().trim() || 'Amazon Customer';
-            const ratingRaw = $(el).find('[data-hook="review-star-rating"] .a-icon-alt, [data-hook="cmps-review-star-rating"] .a-icon-alt').first().text().trim();
+            const ratingRaw = $(el).find('[data-hook="review-star-rating"] .a-icon-alt').first().text().trim();
             const ratingMatch = ratingRaw.match(/([0-9.]+)/);
             const rating = ratingMatch ? ratingMatch[1] : '0';
-            const text = $(el).find('[data-hook="review-body"] span').first().text().trim() ||
-                         $(el).find('[data-hook="review-collapsed"] span').first().text().trim();
+            const text = $(el).find('[data-hook="review-body"] span').first().text().trim();
             if (text && text.length > 5) {
                 reviews.push({ author, rating, text });
             }
         });
-
         return reviews;
     } catch (e) {
-        // Reviews page failed — return empty, never crash
         return [];
     }
 }
 
 export class Engine {
     static async processUrl(rawUrl) {
-        // 1. Sanitize the URL
         const cUrl = cleanUrl(rawUrl);
-
-        // 2. Detect Platform
         const platform = detectPlatform(cUrl);
-        if (!platform) {
-            throw new Error("Unsupported website");
-        }
+        if (!platform) throw new Error("Unsupported website");
 
-        // 3. Pick a random User-Agent
         const ua = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
-
-        // 4. Fetch HTML with Anti-Bot Resilience
         let html;
+        let needPlaywright = false;
         try {
             html = await fetchHtml(cUrl, ua);
         } catch (error) {
-            if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
-                throw new Error("Network failure: Request timed out");
-            }
-            if (error.response && error.response.status === 404) {
-                throw new Error("Product not found");
-            }
-            throw new Error(`Network failure: ${error.message}`);
+            console.error(`[Engine] HTTP failed for ${cUrl}: ${error.message}. Trying Playwright fallback...`);
+            needPlaywright = true;
         }
 
-        // 5. Select the appropriate extractor
-        let extractor;
-        switch (platform) {
-            case 'amazon':
-                extractor = new AmazonExtractor(html, cUrl, platform);
-                break;
-            case 'flipkart':
-                extractor = new FlipkartExtractor(html, cUrl, platform);
-                break;
-            case 'meesho':
-                extractor = new MeeshoExtractor(html, cUrl, platform);
-                break;
-            case 'myntra':
-                extractor = new MyntraExtractor(html, cUrl, platform);
-                break;
-            case 'ajio':
-                extractor = new AjioExtractor(html, cUrl, platform);
-                break;
-            case 'snapdeal':
-                extractor = new SnapdealExtractor(html, cUrl, platform);
-                break;
-            default:
-                throw new Error("Unsupported website");
+        const getExtractor = (h) => {
+            switch (platform) {
+                case 'amazon': return new AmazonExtractor(h, cUrl, platform);
+                case 'flipkart': return new FlipkartExtractor(h, cUrl, platform);
+                case 'meesho': return new MeeshoExtractor(h, cUrl, platform);
+                case 'myntra': return new MyntraExtractor(h, cUrl, platform);
+                case 'ajio': return new AjioExtractor(h, cUrl, platform);
+                case 'snapdeal': return new SnapdealExtractor(h, cUrl, platform);
+                default: throw new Error("Unsupported website");
+            }
+        };
+
+        if (!needPlaywright) {
+            const testExtractor = getExtractor(html);
+            const testData = testExtractor.extract();
+            // Force Playwright if title/price are missing, OR if reviews are completely missing 
+            // (since reviews are heavily lazy-loaded on most modern e-commerce sites).
+            if (!testData.title || testData.price === null || (!testData.reviews || testData.reviews.length === 0)) {
+                console.error(`[Engine] HTTP returned incomplete data or missing reviews for ${cUrl}. Trying Playwright fallback...`);
+                needPlaywright = true;
+            }
         }
 
-        // 6. Extract and Validate
+        if (needPlaywright) {
+            try {
+                const browser = await BrowserManager.getBrowser();
+                const page = await BrowserManager.createPage(ua);
+                await page.goto(cUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+                // Robust deep scroll to trigger lazy-loaded reviews and ratings
+                await page.evaluate(async () => {
+                    await new Promise((resolve) => {
+                        let totalHeight = 0;
+                        const distance = 400;
+                        const timer = setInterval(() => {
+                            const scrollHeight = document.body.scrollHeight;
+                            window.scrollBy(0, distance);
+                            totalHeight += distance;
+                            if (totalHeight >= scrollHeight || totalHeight > 6000) {
+                                clearInterval(timer);
+                                resolve();
+                            }
+                        }, 100);
+                    });
+                });
+                // Wait briefly for AJAX review loads
+                await new Promise(r => setTimeout(r, 1500));
+                html = await page.content();
+                await BrowserManager.cleanup();
+            } catch (pwError) {
+                await BrowserManager.cleanup();
+                throw new Error(`Network and Browser fallback failure: ${pwError.message}`);
+            }
+        }
+
+        const extractor = getExtractor(html);
         const rawData = extractor.extract();
         const validatedData = extractor.validate(rawData);
 
-        // 7. For Amazon: if reviews are empty from the product page (JS-rendered),
-        //    fetch the dedicated static reviews page as a fallback.
         if (platform === 'amazon' && validatedData.reviews.length === 0) {
-            try {
-                const parsedUrl = new URL(cUrl);
-                const asinMatch = parsedUrl.pathname.match(/\/dp\/([A-Z0-9]{10})/);
-                if (asinMatch) {
-                    const asin = asinMatch[1];
-                    const origin = parsedUrl.origin;
-                    const extraReviews = await fetchAmazonReviews(asin, origin, ua);
-                    if (extraReviews.length > 0) {
-                        validatedData.reviews = extraReviews;
-                    }
-                }
-            } catch (e) {
-                // Non-fatal: proceed with empty reviews
+            const parsedUrl = new URL(cUrl);
+            const asinMatch = parsedUrl.pathname.match(/\/dp\/([A-Z0-9]{10})/);
+            if (asinMatch) {
+                const extraReviews = await fetchAmazonReviews(asinMatch[1], parsedUrl.origin, ua);
+                if (extraReviews.length > 0) validatedData.reviews = extraReviews;
             }
         }
 
@@ -164,14 +153,66 @@ export class Engine {
         const ua = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
         const searchers = [
             new AmazonSearcher(ua),
-            new FlipkartSearcher(ua)
+            new FlipkartSearcher(ua),
+            new AjioSearcher(ua),
+            new SnapdealSearcher(ua),
+            new MeeshoSearcher(ua),
+            new MyntraSearcher(ua)
         ];
 
-        const results = await Promise.allSettled(searchers.map(s => s.search(query)));
-        const allProducts = results
-            .filter(r => r.status === 'fulfilled')
-            .flatMap(r => r.value);
+        console.log(`[Engine] Starting multi-platform search for: "${query}"`);
 
-        return allProducts;
+        // Phase 1: HTTP Search (Parallel)
+        const httpResults = await Promise.allSettled(searchers.map(s => s.search(query)));
+        
+        const finalResults = [];
+        const browserNeededFor = [];
+
+        httpResults.forEach((res, index) => {
+            const s = searchers[index];
+            if (res.status === 'fulfilled' && res.value && res.value.length > 0) {
+                console.log(`[Engine] ${s.constructor.name}: HTTP Success (${res.value.length} items)`);
+                finalResults.push(...res.value);
+            } else {
+                if (s.useBrowser) {
+                    console.log(`[Engine] ${s.constructor.name}: HTTP Failed/Empty. Queueing for Playwright.`);
+                    browserNeededFor.push(s);
+                } else {
+                    console.log(`[Engine] ${s.constructor.name}: HTTP Failed/Empty. No browser fallback available.`);
+                }
+            }
+        });
+
+        // Phase 2: Playwright Fallback (Sequential to avoid overload)
+        if (browserNeededFor.length > 0) {
+            console.error(`[Engine] Launching browser for ${browserNeededFor.length} platforms...`);
+            try {
+                const browser = await BrowserManager.getBrowser();
+                const page = await BrowserManager.createPage(ua);
+
+                for (const s of browserNeededFor) {
+                    try {
+                        const results = await s.searchWithBrowser(page, query);
+                        if (results && results.length > 0) {
+                            console.error(`[Engine] ${s.constructor.name}: Playwright Success (${results.length} items)`);
+                            finalResults.push(...results);
+                        } else {
+                            console.error(`[Engine] ${s.constructor.name}: Playwright returned no results.`);
+                        }
+                        
+                        await new Promise(r => setTimeout(r, 500));
+                    } catch (err) {
+                        console.error(`[Engine] Playwright error for ${s.constructor.name}:`, err.message);
+                    }
+                }
+                await BrowserManager.cleanup();
+            } catch (err) {
+                console.error("[Engine] Global Browser Error:", err.message);
+                await BrowserManager.cleanup();
+            }
+        }
+
+        console.error(`[Engine] Search complete. Total products found: ${finalResults.length}`);
+        return finalResults;
     }
 }

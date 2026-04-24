@@ -15,17 +15,23 @@ def test_backend():
         
         try:
             start = time.time()
+            # Testing the newly added alias
             response = requests.post("http://localhost:8000/fetch-product-intelligence", json={"url": url})
             end = time.time()
             
             if response.status_code == 200:
                 res_json = response.json()
-                if res_json.get("success"):
-                    data = res_json.get("data", {})
+                if res_json.get("status") == "success":
+                    product = res_json.get("product", {})
                     print(f"[SUCCESS] {end - start:.2f}s")
-                    print(f"Title: {data.get('title')}")
+                    print(f"Title: {product.get('title')}")
+                    print(f"Price: {product.get('price')}")
+                    reviews = product.get('reviews', [])
+                    print(f"Reviews Found: {len(reviews)}")
+                    if reviews:
+                        print(f"Sample Review: {reviews[0].get('text')[:50]}...")
                 else:
-                    print(f"[EXPECTED FAILURE] Backend reported error: {res_json.get('error')}")
+                    print(f"[EXPECTED FAILURE] Backend reported error: {res_json.get('status')}")
             else:
                 print(f"[ERROR] HTTP Error {response.status_code}: {response.text}")
         except Exception as e:

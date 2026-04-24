@@ -1,143 +1,266 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import ProductIngestor from '../components/ProductIngestor';
 import DiscoveryResults from '../components/DiscoveryResults';
-import ComparisonTable from '../components/ComparisonTable';
+import FilterPanel from '../components/FilterPanel';
 import ErrorMessage from '../components/ErrorMessage';
 import InsightDashboard from '../components/InsightDashboard';
 import SkeletonLoader from '../components/SkeletonLoader';
+import GridSkeletonLoader from '../components/GridSkeletonLoader';
 import { analyzeURL, smartSearch } from '../services/api';
 
-const Home = () => {
-    const [isLoading, setIsLoading] = useState(false);
-    const [isDetailLoading, setIsDetailLoading] = useState(false);
-    const [productData, setProductData] = useState(null);
-    const [discoveryData, setDiscoveryData] = useState([]);
-    const [error, setError] = useState('');
+const DEFAULT_FILTERS = { platforms: [], minPrice: '', maxPrice: '', minDiscount: 0, brand: '' };
 
-    const handleSearch = async (query) => {
+const EXAMPLE_QUERIES = [
+    'iPhone 15 Pro Max', 'boAt Airdopes 141', 'Samsung 8kg washing machine',
+    'Nike running shoes', 'Dell laptop', 'Levi\'s jeans'
+];
+
+const Home = () => {
+    const [isLoading, setIsLoading]           = useState(false);
+    const [isDetailLoading, setIsDetailLoading] = useState(false);
+    const [productData, setProductData]       = useState(null);
+    const [discoveryData, setDiscoveryData]   = useState([]);
+    const [error, setError]                   = useState('');
+    const [hasSearched, setHasSearched]       = useState(false);
+    const [filters, setFilters]               = useState(DEFAULT_FILTERS);
+    const [lastQuery, setLastQuery]           = useState('');
+    const blobRef = useRef(null);
+
+    // Parallax blob on scroll
+    useEffect(() => {
+        const onScroll = () => {
+            if (blobRef.current) {
+                const y = window.scrollY * 0.25;
+                blobRef.current.style.transform = `translateY(${y}px)`;
+            }
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
+    }, []);
+
+    const handleSearch = async (searchData) => {
+        const query = typeof searchData === 'string' ? searchData : searchData.query;
+        const selectedPlatforms = searchData.platforms || [];
+
         setIsLoading(true);
         setError('');
         setProductData(null);
         setDiscoveryData([]);
+        setHasSearched(true);
+        setLastQuery(query);
+        
+        // Apply pre-selected platforms to the filter panel
+        setFilters(prev => ({ ...prev, platforms: selectedPlatforms }));
 
         try {
             const data = await smartSearch(query);
-            if (data?.status === 'success') {
-                setDiscoveryData(data?.products || []);
-            } else {
-                setError(data?.error || "Search failed");
-            }
-        } catch (err) {
-            console.error("SEARCH QUERY ERROR:", err);
-            setError("Search failed");
-        } finally {
-            setIsLoading(false);
-        }
+            if (data?.status === 'success') setDiscoveryData(data?.canonical_products || []);
+            else setError(data?.error || 'Search failed');
+        } catch { setError('Search failed'); }
+        finally { setIsLoading(false); }
     };
 
     const handleSelectProduct = async (product) => {
         setIsDetailLoading(true);
         setError('');
         setProductData(null);
-        
-        // Scroll to top or detail section
         window.scrollTo({ top: 0, behavior: 'smooth' });
-
         try {
             const data = await analyzeURL(product.url);
-            if (data?.status === 'success') {
-                setProductData(data?.product || {});
-            } else {
-                setError("Unable to fetch complete details for this product.");
-            }
-        } catch (err) {
-            console.error("DETAIL FETCH ERROR:", err);
-            setError("Failed to load product details.");
-        } finally {
-            setIsDetailLoading(false);
-        }
+            if (data?.status === 'success') setProductData(data?.product || {});
+            else setError('Unable to fetch complete details.');
+        } catch { setError('Failed to load product details.'); }
+        finally { setIsDetailLoading(false); }
     };
 
-    return (
-        <main className="min-h-screen relative overflow-hidden bg-[#0a0a0a]">
-            {/* NEW PREMIUM BACKGROUND */}
-            <div 
-                className="fixed inset-0 z-0 opacity-40 grayscale-[0.2]"
-                style={{
-                    backgroundImage: `url('file:///C:/Users/KALURI%20KARTEJA/.gemini/antigravity/brain/d70b5002-917d-4a37-90de-cfdf38251c2b/ecommerce_workspace_bg_1777016398311.png')`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    filter: 'blur(2px)'
-                }}
-            />
-            <div className="fixed inset-0 z-0 bg-gradient-to-b from-transparent via-zinc-950/50 to-zinc-950"></div>
+    const categorizedResults = useMemo(() => {
+        const results = { perfect: [], close: [] };
+        
+        discoveryData.forEach(p => {
+            const variants = p.variants || [];
+            const title = (p.title || '').toLowerCase();
+            
+            // Criteria scores
+            let score = 0;
+            const totalCriteria = 4; // Platform, Price, Discount, Brand
 
-            <div className="relative z-10 pt-28 pb-20 px-6 max-w-7xl mx-auto flex flex-col items-center">
-                
+            // 1. Platform
+            const hasPlatformMatch = filters.platforms.length === 0 || 
+                                     variants.some(v => filters.platforms.includes(v.platform.toLowerCase()));
+            if (hasPlatformMatch) score++;
+
+            // 2. Price
+            const minP = p.min_price || 0;
+            const maxP = p.max_price || 0;
+            let hasPriceMatch = true;
+            if (filters.minPrice && maxP < parseFloat(filters.minPrice)) hasPriceMatch = false;
+            if (filters.maxPrice && minP > parseFloat(filters.maxPrice)) hasPriceMatch = false;
+            
+            // "Close" price check (within 20%)
+            const isClosePrice = !hasPriceMatch && (
+                (!filters.minPrice || maxP >= parseFloat(filters.minPrice) * 0.8) &&
+                (!filters.maxPrice || minP <= parseFloat(filters.maxPrice) * 1.2)
+            );
+            if (hasPriceMatch) score++;
+            else if (isClosePrice) score += 0.5;
+
+            // 3. Discount
+            const maxDiscount = Math.max(...variants.map(v => v.discount_percentage || 0));
+            let hasDiscountMatch = true;
+            if (filters.minDiscount > 0 && maxDiscount < Number(filters.minDiscount)) hasDiscountMatch = false;
+            
+            // "Close" discount check (within 10% of target)
+            const isCloseDiscount = !hasDiscountMatch && maxDiscount >= (Number(filters.minDiscount) - 10);
+            if (hasDiscountMatch) score++;
+            else if (isCloseDiscount) score += 0.5;
+
+            // 4. Brand
+            const hasBrandMatch = !filters.brand || title.includes(filters.brand.toLowerCase());
+            if (hasBrandMatch) score++;
+
+            const finalProduct = { ...p, filterScore: score };
+            if (score === totalCriteria) results.perfect.push(finalProduct);
+            else if (score >= 2.5) results.close.push(finalProduct);
+        });
+
+        const finalResults = { perfect: results.perfect, close: results.close };
+        return finalResults;
+    }, [discoveryData, filters]);
+
+    return (
+        <div className="relative min-h-screen" style={{ background: 'var(--cream)' }}>
+            {/* ── BACKGROUND LAYER ── */}
+            <div className="app-bg" />
+            <div className="blob blob-1" ref={blobRef} />
+            <div className="blob blob-2" />
+            <div className="blob blob-3" />
+
+            <div className="relative z-10 max-w-6xl mx-auto px-4 pt-16 pb-24">
+
+                {/* ── HERO ── */}
                 <div className="text-center mb-12 fade-in">
-                    <h2 className="text-4xl md:text-6xl font-black text-white mb-6 tracking-tight drop-shadow-2xl">
-                        AI <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500">Shop Intel</span>
-                    </h2>
-                    <p className="text-lg text-zinc-400 max-w-3xl mx-auto font-medium">
-                        Professional e-commerce discovery. We crawl the market to suggest the best for you, with real-time price history and AI sentiment analytics.
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6 fade-in-1"
+                         style={{ background: 'rgba(112,130,56,0.1)', border: '1px solid rgba(112,130,56,0.25)', color: 'var(--olive)' }}>
+                        <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--olive)' }} />
+                        <span className="text-xs font-black uppercase tracking-widest">Live Market Intelligence</span>
+                    </div>
+
+                    <h1 className="font-black tracking-tight leading-tight mb-4 fade-in-1"
+                        style={{ fontSize: 'clamp(2.5rem, 6vw, 5rem)', color: 'var(--text)', fontFamily: "'Playfair Display', serif" }}>
+                        AI{' '}
+                        <span style={{ color: 'var(--olive)' }}>Shop</span>{' '}
+                        <span style={{ color: 'var(--brown)' }}>Intel</span>
+                    </h1>
+
+                    <p className="text-base max-w-xl mx-auto fade-in-2" style={{ color: 'var(--text-md)' }}>
+                        Search <strong>any product</strong> across Amazon, Flipkart, Myntra, Ajio, Snapdeal &amp; Meesho —
+                        get AI sentiment, price history, and smart recommendations.
                     </p>
                 </div>
 
-                <div className="w-full max-w-4xl backdrop-blur-xl bg-white/5 rounded-[3rem] p-4 border border-white/10 shadow-2xl mb-16">
-                    <ProductIngestor 
-                        onSearch={handleSearch} 
-                        isLoading={isLoading} 
-                    />
+                {/* ── SEARCH ── */}
+                <div className="mb-6 fade-in-2">
+                    <ProductIngestor onSearch={handleSearch} isLoading={isLoading} />
                 </div>
-                
-                <div className="w-full relative min-h-[400px]">
-                    {(isLoading || isDetailLoading) && (
-                        <div className="w-full mt-10">
-                            <SkeletonLoader />
-                        </div>
-                    )}
 
-                    {!isLoading && !isDetailLoading && error && (
-                        <ErrorMessage message={error} />
-                    )}
-
-                    {!isLoading && !isDetailLoading && productData && !error && (
-                        <div className="mb-20">
-                            <div className="flex justify-start mb-8">
-                                <button 
-                                    onClick={() => setProductData(null)}
-                                    className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-indigo-400 hover:text-indigo-300 transition-colors bg-white/5 px-6 py-3 rounded-2xl border border-white/10 backdrop-blur-md"
+                {/* ── EXAMPLE CHIPS ── */}
+                {!hasSearched && (
+                    <div className="text-center mb-12 fade-in-3">
+                        <p className="text-xs font-black uppercase tracking-widest mb-3" style={{ color: 'var(--text-lt)' }}>
+                            Try searching for
+                        </p>
+                        <div className="flex flex-wrap justify-center gap-2">
+                            {EXAMPLE_QUERIES.map(q => (
+                                <button
+                                    key={q}
+                                    onClick={() => handleSearch(q)}
+                                    className="px-4 py-2 rounded-full text-xs font-semibold transition-all duration-200"
+                                    style={{
+                                        background: 'rgba(255,255,255,0.7)',
+                                        border: '1px solid var(--beige-2)',
+                                        color: 'var(--text-md)',
+                                    }}
+                                    onMouseEnter={e => { e.target.style.borderColor = 'var(--olive)'; e.target.style.color = 'var(--olive)'; }}
+                                    onMouseLeave={e => { e.target.style.borderColor = 'var(--beige-2)'; e.target.style.color = 'var(--text-md)'; }}
                                 >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                                    </svg>
-                                    Return to Discovery
+                                    {q}
                                 </button>
-                            </div>
-                            <InsightDashboard data={productData} />
+                            ))}
                         </div>
-                    )}
+                    </div>
+                )}
 
-                    {!isLoading && !isDetailLoading && discoveryData && discoveryData.length > 0 && !productData && (
-                        <DiscoveryResults 
-                            results={discoveryData} 
-                            onSelect={handleSelectProduct} 
-                        />
-                    )}
-                    
-                    {!isLoading && !isDetailLoading && !productData && (!discoveryData || discoveryData.length === 0) && !error && (
-                        <div className="text-center p-16 backdrop-blur-md bg-white/5 rounded-[3rem] border border-white/10 text-zinc-500 fade-in flex flex-col items-center">
-                            <div className="w-20 h-20 mb-6 rounded-full bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
-                                <svg className="w-10 h-10 text-indigo-500 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
-                                </svg>
-                            </div>
-                            <p className="font-black uppercase tracking-[0.2em] text-xs">Awaiting Query • Suggesting the Best for You</p>
+                {/* ── FILTER PANEL ── */}
+                {hasSearched && !productData && (
+                    <div className="mb-8 fade-in">
+                        <FilterPanel filters={filters} onChange={setFilters} />
+                    </div>
+                )}
+
+                {/* ── CONTENT ── */}
+                {isLoading && (
+                    <div className="mt-8">
+                        <p className="text-center text-[10px] font-black uppercase tracking-widest mb-6 fade-in" style={{ color: 'var(--olive)' }}>
+                            🛒 Crawling 6 platforms for "{lastQuery}"…
+                        </p>
+                        <GridSkeletonLoader />
+                    </div>
+                )}
+
+                {isDetailLoading && (
+                    <div className="mt-8">
+                        <p className="text-center text-[10px] font-black uppercase tracking-widest mb-6 fade-in" style={{ color: 'var(--olive)' }}>
+                            🔍 Running AI Deep Dive Analysis…
+                        </p>
+                        <SkeletonLoader />
+                    </div>
+                )}
+
+                {!isLoading && !isDetailLoading && error && <ErrorMessage message={error} />}
+
+                {!isLoading && !isDetailLoading && productData && !error && (
+                    <div className="mb-20 fade-in">
+                        <button
+                            onClick={() => setProductData(null)}
+                            className="flex items-center gap-2 mb-8 px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all"
+                            style={{ background: 'rgba(255,255,255,0.8)', border: '1px solid var(--beige-2)', color: 'var(--text-md)' }}
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            Back to Results
+                        </button>
+                        <InsightDashboard data={productData} />
+                    </div>
+                )}
+
+                {!isLoading && !isDetailLoading && !productData && hasSearched && !error && (
+                    <DiscoveryResults
+                        results={categorizedResults.perfect}
+                        closeMatches={categorizedResults.close}
+                        totalResults={discoveryData.length}
+                        onSelect={handleSelectProduct}
+                    />
+                )}
+
+                {!isLoading && !isDetailLoading && !productData && !hasSearched && !error && (
+                    <div className="text-center py-20 fade-in-3">
+                        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-5"
+                             style={{ background: 'rgba(112,130,56,0.1)', border: '2px solid rgba(112,130,56,0.2)' }}>
+                            <svg className="w-10 h-10" style={{ color: 'var(--olive)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
                         </div>
-                    )}
-                </div>
+                        <p className="font-black text-sm uppercase tracking-widest mb-2" style={{ color: 'var(--text-md)' }}>
+                            Search Anything
+                        </p>
+                        <p className="text-sm max-w-sm mx-auto" style={{ color: 'var(--text-lt)' }}>
+                            Type any product, brand, or category above. We'll crawl 6 major e-commerce platforms instantly.
+                        </p>
+                    </div>
+                )}
             </div>
-        </main>
+        </div>
     );
 };
 

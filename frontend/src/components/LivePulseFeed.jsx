@@ -1,97 +1,109 @@
 import React from 'react';
 
-const LivePulseFeed = ({ reviews = [] }) => {
-    const safeReviews = Array.isArray(reviews) ? reviews : [];
+const sentimentStyle = (s) => {
+    switch ((s || '').toLowerCase()) {
+        case 'positive': return { bg: 'rgba(112,130,56,0.10)', color: 'var(--olive)', border: 'rgba(112,130,56,0.2)' };
+        case 'negative': return { bg: 'rgba(204,51,0,0.08)',  color: '#cc3300',       border: 'rgba(204,51,0,0.15)' };
+        default:         return { bg: 'rgba(196,122,0,0.08)', color: '#c47a00',        border: 'rgba(196,122,0,0.15)' };
+    }
+};
 
-    if (safeReviews.length === 0) {
+const avatarColor = (name = 'C') => {
+    const colors = ['var(--olive)', 'var(--brown)', '#c47a00', '#6340cc', '#1855d4'];
+    return colors[name.charCodeAt(0) % colors.length];
+};
+
+const LivePulseFeed = ({ reviews = [] }) => {
+    const safe = Array.isArray(reviews) ? reviews : [];
+
+    if (safe.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center p-12 text-gray-400 dark:text-zinc-600 bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-3xl border border-white/20 dark:border-zinc-800/50 shadow-xl">
-                <svg className="w-16 h-16 mb-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+            <div className="flex flex-col items-center justify-center h-full rounded-3xl p-10 text-center"
+                 style={{ background: 'rgba(255,255,255,0.7)', border: '1.5px solid var(--beige-2)' }}>
+                <svg className="w-12 h-12 mb-4" style={{ color: 'var(--brown)', opacity: 0.3 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                 </svg>
-                <p className="text-lg font-medium">No Live Feedback Detected</p>
-                <p className="text-sm">Real-time signals will appear here once extracted.</p>
+                <p className="font-bold text-sm" style={{ color: 'var(--text-md)' }}>No Live Feedback</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-lt)' }}>Real-time signals appear here once extracted.</p>
             </div>
         );
     }
 
-    const getSentimentStyles = (sentiment) => {
-        switch (sentiment?.toLowerCase()) {
-            case 'positive':
-                return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
-            case 'negative':
-                return 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20';
-            default:
-                return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
-        }
-    };
-
     return (
-        <div className="flex flex-col h-full bg-white/50 dark:bg-zinc-900/40 backdrop-blur-xl rounded-3xl border border-white/20 dark:border-zinc-800/50 shadow-2xl overflow-hidden">
-            <div className="px-6 py-5 border-b border-white/10 dark:border-zinc-800/50 flex items-center justify-between">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <span className="relative flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+        <div className="flex flex-col h-full rounded-3xl overflow-hidden"
+             style={{ background: 'rgba(255,255,255,0.80)', border: '1.5px solid var(--beige-2)', boxShadow: '0 4px 24px rgba(120,90,60,0.08)' }}>
+
+            {/* Header */}
+            <div className="px-5 py-4 flex items-center justify-between"
+                 style={{ borderBottom: '1px solid var(--beige-2)' }}>
+                <h3 className="font-black text-sm uppercase tracking-widest flex items-center gap-2" style={{ color: 'var(--text)' }}>
+                    <span className="relative flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'var(--olive)' }} />
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ background: 'var(--olive)' }} />
                     </span>
                     Live Pulse Feed
                 </h3>
-                <span className="text-xs font-semibold px-2 py-1 bg-zinc-200 dark:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 uppercase tracking-tighter">
-                    {safeReviews.length} Recent Signals
+                <span className="text-[10px] font-black px-3 py-1 rounded-full"
+                      style={{ background: 'var(--beige)', color: 'var(--text-lt)' }}>
+                    {safe.length} Signals
                 </span>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-                {safeReviews.map((review, idx) => (
-                    <div 
-                        key={review?.id || idx} 
-                        className="group relative bg-white/60 dark:bg-zinc-800/40 p-5 rounded-2xl border border-white/20 dark:border-zinc-700/30 hover:border-indigo-500/30 dark:hover:border-indigo-500/30 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 fade-in"
-                        style={{ animationDelay: `${idx * 100}ms` }}
-                    >
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
-                                    {(review?.author || 'C')[0].toUpperCase()}
-                                </div>
-                                <div>
-                                    <h4 className="font-bold text-sm text-gray-900 dark:text-zinc-100 leading-none mb-1">{review?.author || 'Verified Customer'}</h4>
-                                    <span className="text-[10px] text-gray-500 dark:text-zinc-500 uppercase font-bold tracking-widest">{review?.date || 'Recently'}</span>
-                                </div>
-                            </div>
-                            <div className="flex flex-col items-end gap-1">
-                                <div className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${getSentimentStyles(review?.sentiment_label)}`}>
-                                    {review?.sentiment_label || 'Neutral'}
-                                </div>
-                                {(review?.fake_probability || 0) > 0.6 && (
-                                    <div className="text-[9px] font-bold bg-rose-500 text-white px-1.5 py-0.5 rounded animate-pulse">
-                                        Suspicious
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        
-                        <p className="text-gray-600 dark:text-zinc-300 text-sm leading-relaxed mb-3">
-                            "{review?.text || 'No feedback provided.'}"
-                        </p>
+            {/* Review cards */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {safe.map((r, idx) => {
+                    const ss = sentimentStyle(r?.sentiment_label);
+                    const initial = (r?.author || 'C')[0].toUpperCase();
+                    const ac = avatarColor(r?.author || '');
+                    const starCount = Math.round(parseFloat(r?.rating || 0));
 
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1">
-                                {[...Array(5)].map((_, i) => (
-                                    <svg 
-                                        key={i} 
-                                        className={`w-3 h-3 ${i < Math.round(parseFloat(review?.rating || 0)) ? 'text-yellow-400 fill-yellow-400' : 'text-zinc-300 dark:text-zinc-700'}`} 
-                                        viewBox="0 0 20 20"
-                                    >
-                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                                    </svg>
-                                ))}
+                    return (
+                        <div key={r?.id || idx}
+                             className="p-4 rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
+                             style={{ background: 'rgba(255,255,255,0.9)', border: '1px solid var(--beige-2)' }}>
+
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-black flex-shrink-0"
+                                         style={{ background: ac }}>
+                                        {initial}
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black leading-none" style={{ color: 'var(--text)' }}>
+                                            {r?.author || 'Verified Customer'}
+                                        </p>
+                                        <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-lt)' }}>
+                                            {r?.date || 'Recently'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <span className="text-[9px] font-black px-2 py-1 rounded-full border"
+                                      style={{ background: ss.bg, color: ss.color, borderColor: ss.border }}>
+                                    {r?.sentiment_label || 'Neutral'}
+                                </span>
                             </div>
-                            <div className="text-[10px] text-gray-400 dark:text-zinc-500 font-mono">
-                                AI Confidence: {Math.round((1 - (review?.fake_probability || 0)) * 100)}%
+
+                            <p className="text-xs leading-relaxed mb-3 italic"
+                               style={{ color: 'var(--text-md)' }}>
+                                "{r?.text || 'No feedback provided.'}"
+                            </p>
+
+                            <div className="flex items-center justify-between">
+                                <div className="flex">
+                                    {[...Array(5)].map((_, i) => (
+                                        <svg key={i} className="w-3 h-3" viewBox="0 0 20 20"
+                                             style={{ fill: i < starCount ? '#e8a020' : 'var(--beige-2)' }}>
+                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                        </svg>
+                                    ))}
+                                </div>
+                                <span className="text-[9px] font-mono" style={{ color: 'var(--text-lt)' }}>
+                                    AI: {Math.round((1 - (r?.fake_probability || 0)) * 100)}% confidence
+                                </span>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );

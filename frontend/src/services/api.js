@@ -1,4 +1,4 @@
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 
 export async function smartSearch(query) {
     try {
@@ -14,7 +14,13 @@ export async function smartSearch(query) {
         return res.json();
     } catch (err) {
         console.error("SEARCH ERROR:", err);
-        return { status: "error", products: [], best_product: {} };
+        return { 
+            status: "error", 
+            error: err.message === "Failed to fetch" ? "Backend is offline (Port 5000)" : err.message,
+            products: [], 
+            canonical_products: [],
+            best_product: {} 
+        };
     }
 }
 
@@ -32,7 +38,12 @@ export async function analyzeURL(url) {
         return res.json();
     } catch (err) {
         console.error("ANALYZE URL ERROR:", err);
-        return { status: "error", product: {}, recommendation: {} };
+        return { 
+            status: "error", 
+            error: err.message === "Failed to fetch" ? "Backend is offline (Port 5000)" : err.message,
+            product: {}, 
+            recommendation: {} 
+        };
     }
 }
 

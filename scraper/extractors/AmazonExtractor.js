@@ -121,5 +121,4 @@ export class AmazonExtractor extends BaseExtractor {
         fallback.reviews = reviews;
         return fallback;
     }
-    }
 }

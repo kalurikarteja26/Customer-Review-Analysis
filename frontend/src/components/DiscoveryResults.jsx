@@ -1,107 +1,234 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 
-const DiscoveryResults = ({ results = [], onSelect }) => {
-    if (!results || results.length === 0) {
+const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000';
+
+const proxyImage = (url) => {
+    if (!url || url.startsWith('/') || url.startsWith('data:')) return url || '';
+    if (url.includes('127.0.0.1') || url.includes('localhost') || url.includes('/product-image/')) return url;
+    return `${API_BASE}/image-proxy?url=${encodeURIComponent(url)}`;
+};
+
+const pillClass = (platform = '') => {
+    const p = platform.toLowerCase();
+    const map = { amazon: 'pill-amazon', flipkart: 'pill-flipkart', myntra: 'pill-myntra',
+                  ajio: 'pill-ajio', snapdeal: 'pill-snapdeal', meesho: 'pill-meesho' };
+    return `platform-pill ${map[p] || 'pill-default'}`;
+};
+
+const StarRating = ({ rating }) => {
+    const r = Math.min(5, Math.max(0, parseFloat(rating) || 0));
+    return (
+        <div className="flex items-center gap-1">
+            {[...Array(5)].map((_, i) => (
+                <svg key={i} className="w-3 h-3" viewBox="0 0 20 20"
+                     style={{ fill: i < Math.round(r) ? '#e8a020' : '#ddd' }}>
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+            ))}
+            <span className="text-xs font-semibold ml-1" style={{ color: 'var(--text-lt)' }}>
+                {r > 0 ? r.toFixed(1) : '—'}
+            </span>
+        </div>
+    );
+};
+
+const DiscoveryResults = ({ results = [], closeMatches = [], totalResults, onSelect }) => {
+    const hasPerfect = results.length > 0;
+    const hasClose = closeMatches.length > 0;
+
+    if (!hasPerfect && !hasClose) {
         return (
-            <div className="w-full mt-12 p-12 text-center bg-zinc-50 dark:bg-zinc-900/50 rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800">
-                <p className="text-zinc-500 font-bold uppercase tracking-widest text-sm">No products found matching your search</p>
+            <div className="text-center py-16 rounded-3xl fade-in"
+                 style={{ background: 'rgba(255,255,255,0.6)', border: '1.5px dashed var(--beige-2)' }}>
+                <p className="text-sm font-bold uppercase tracking-widest" style={{ color: 'var(--text-lt)' }}>
+                    {totalResults > 0
+                        ? `Viewing all ${totalResults} discoveries (adjust filters to refine)`
+                        : 'No products detected. Try adjusting your search query.'}
+                </p>
             </div>
         );
     }
 
-    return (
-        <div className="w-full mt-12 fade-in px-4">
-            <h3 className="text-2xl font-bold mb-8 text-gray-900 dark:text-white uppercase tracking-tighter flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <span className="w-8 h-[2px] bg-indigo-500"></span>
-                    Top AI Discoveries
-                </div>
-                <span className="text-xs font-black text-indigo-500 bg-indigo-500/10 px-4 py-2 rounded-2xl border border-indigo-500/20">
-                    {results.length} Market Matches Found
-                </span>
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                {(results || []).map((product, idx) => (
-                    <motion.div
-                        key={idx}
-                        whileHover={{ y: -12 }}
-                        className="bg-white dark:bg-zinc-900 rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/20 dark:border-zinc-800/50 flex flex-col group cursor-pointer relative"
-                        onClick={() => onSelect && onSelect(product)}
-                    >
-                        <div className="relative h-72 overflow-hidden bg-gray-100 dark:bg-zinc-800">
-                            <img 
-                                src={product?.image || "/placeholder-product.png"} 
-                                alt={product?.title || "Product"}
-                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                onError={(e) => { e.target.src = "/placeholder-product.png"; }}
-                            />
-                            
-                            {/* Hover Overlay */}
-                            <div className="absolute inset-0 bg-indigo-600/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center">
-                                <div className="bg-white text-indigo-600 font-black text-xs px-6 py-3 rounded-full uppercase tracking-widest shadow-2xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                                    View AI Intel
-                                </div>
-                            </div>
+    const ProductCard = ({ product, isClose, idx, onSelect }) => {
+        const [expanded, setExpanded] = React.useState(false);
+        const imgSrc = proxyImage(product?.image);
+        const hasImage = Boolean(imgSrc);
+        const variants = product.variants || [];
+        const bestDiscount = Math.max(...variants.map(v => v.discount_percentage || 0));
 
-                            <div className="absolute top-4 right-4 flex flex-col gap-2">
-                                {product?.recommendation?.badges?.map((badge, i) => (
-                                    <span key={i} className="bg-white/90 backdrop-blur-md text-gray-900 text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">
-                                        {badge}
-                                    </span>
+        return (
+            <div
+                className={`product-card flex flex-col relative transition-all duration-300 ${expanded ? 'shadow-2xl z-20 scale-[1.02]' : ''} ${product.is_best_product ? 'border-2 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.3)]' : ''}`}
+                style={{ animationDelay: `${idx * 0.05}s` }}
+            >
+                {product.is_best_product && (
+                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-30 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1">
+                        <svg className="w-3 h-3 text-yellow-100" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                        AI TOP PICK
+                    </div>
+                )}
+                {/* Image */}
+                <div className="relative overflow-hidden group cursor-pointer" style={{ height: '230px', background: 'var(--beige)' }} onClick={() => onSelect && onSelect(variants[0])}>
+                    {hasImage ? (
+                        <img
+                            src={imgSrc}
+                            alt={product?.title || 'Product'}
+                            className="w-full h-full object-cover transition-all duration-700 opacity-0 group-hover:scale-105"
+                            onLoad={e => e.target.classList.add('opacity-100')}
+                            onError={e => { 
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                            }}
+                            referrerPolicy="no-referrer"
+                        />
+                    ) : null}
+                    
+                    {/* Placeholder */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2"
+                         style={{ display: hasImage ? 'none' : 'flex' }}>
+                        <svg className="w-10 h-10" style={{ color: 'var(--brown)', opacity: 0.4 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-lt)' }}>No Intel Image</span>
+                    </div>
+
+                    {/* Discount badge */}
+                    {bestDiscount > 0 && (
+                        <div className="absolute top-3 left-3 px-2 py-1 rounded-full text-[10px] font-black text-white shadow-md z-10"
+                             style={{ background: 'var(--olive)' }}>
+                            {bestDiscount}% OFF
+                        </div>
+                    )}
+                </div>
+
+                {/* Body */}
+                <div className="p-5 flex flex-col flex-1 bg-white relative">
+                    <div className="flex items-center justify-between mb-3 cursor-pointer" onClick={() => onSelect && onSelect(variants[0])}>
+                        <div className="flex gap-1">
+                            {variants.slice(0, 3).map(v => (
+                                <span key={v.platform} className={pillClass(v.platform)} style={{ padding: '0.15rem 0.4rem', fontSize: '0.55rem' }}>
+                                    {v.platform[0]}
+                                </span>
+                            ))}
+                            {variants.length > 3 && <span className="text-[10px] text-zinc-400">+{variants.length-3}</span>}
+                        </div>
+                        <StarRating rating={product?.avg_rating} />
+                    </div>
+
+                    <h3 className="text-sm font-bold mb-4 line-clamp-2 leading-snug flex-1 cursor-pointer"
+                        style={{ color: 'var(--text)' }} onClick={() => onSelect && onSelect(variants[0])}>
+                        {product?.title || 'Product'}
+                    </h3>
+
+                    <div className="flex flex-col gap-3 pt-4 mt-auto" style={{ borderTop: '1px solid var(--beige-2)' }}>
+                        <div className="flex items-end justify-between cursor-pointer" onClick={() => onSelect && onSelect(variants[0])}>
+                            <div>
+                                <p className="text-[9px] font-black uppercase tracking-widest mb-0.5" style={{ color: 'var(--text-lt)' }}>Best Price</p>
+                                <span className="text-xl font-black" style={{ color: 'var(--text)' }}>
+                                    ₹{Number(product.min_price).toLocaleString('en-IN')}
+                                </span>
+                            </div>
+                            {product?.recommendation?.verdict && (
+                                <span className="text-[9px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider"
+                                      style={{
+                                          background: product.recommendation.verdict === 'BUY'
+                                              ? 'rgba(112,130,56,0.12)' : 'rgba(161,134,111,0.12)',
+                                          color: product.recommendation.verdict === 'BUY'
+                                              ? 'var(--olive)' : 'var(--brown)',
+                                      }}>
+                                    {product.recommendation.verdict}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Expandable Deals Section */}
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+                            className="w-full py-2.5 mt-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+                            style={{ 
+                                background: expanded ? 'var(--beige)' : 'rgba(161,134,111,0.06)',
+                                color: expanded ? 'var(--text)' : 'var(--brown)'
+                            }}
+                        >
+                            {expanded ? 'Hide Deals' : `Check ${variants.length} Deals`}
+                            <svg className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+
+                        <div 
+                            className={`overflow-hidden transition-all duration-300 ease-in-out ${expanded ? 'max-h-[300px] opacity-100 mt-2' : 'max-h-0 opacity-0'}`}
+                        >
+                            <div className="flex flex-col gap-2 p-3 rounded-xl" style={{ background: 'var(--cream)', border: '1px solid var(--beige-2)' }}>
+                                {variants.map((v, i) => (
+                                    <div key={i} className="flex items-center justify-between py-1.5 border-b border-dashed border-gray-200 last:border-0"
+                                         onClick={(e) => { e.stopPropagation(); onSelect && onSelect(v); }}
+                                         style={{ cursor: 'pointer' }}>
+                                        <span className={pillClass(v.platform)}>{v.platform}</span>
+                                        <div className="flex items-center gap-2">
+                                            {v.discount_percentage > 0 && (
+                                                <span className="text-[9px] text-green-600 font-bold px-1.5 py-0.5 bg-green-50 rounded">
+                                                    -{v.discount_percentage}%
+                                                </span>
+                                            )}
+                                            <span className="text-sm font-black text-gray-800">
+                                                {v.price !== 'N/A' ? `₹${Number(v.price).toLocaleString('en-IN')}` : 'OOS'}
+                                            </span>
+                                        </div>
+                                    </div>
                                 ))}
                             </div>
                         </div>
-
-                        <div className="p-8 flex flex-col flex-1">
-                            <div className="flex justify-between items-center mb-4">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 bg-indigo-500/10 px-3 py-1 rounded-full">
-                                    {product?.platform || 'Store'}
-                                </span>
-                                <div className="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-lg">
-                                    <svg className="w-3 h-3 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                    </svg>
-                                    <span className="text-xs font-black text-gray-700 dark:text-zinc-300">{product?.rating || '0.0'}</span>
-                                </div>
-                            </div>
-                            
-                            <h4 className="text-sm font-bold text-gray-800 dark:text-zinc-100 line-clamp-2 mb-6 group-hover:text-indigo-500 transition-colors">
-                                {product?.title || 'Discovering Details...'}
-                            </h4>
-                            
-                            <div className="mt-auto pt-6 border-t border-gray-100 dark:border-zinc-800 flex items-center justify-between">
-                                <div className="flex flex-col">
-                                    {product?.original_price && product.original_price !== 'N/A' && product.original_price !== product.price && (
-                                        <span className="text-[10px] text-zinc-500 line-through mb-0.5">
-                                            ₹{product.original_price}
-                                        </span>
-                                    )}
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xl font-black text-gray-900 dark:text-white">
-                                            {product?.price && !product.price.includes('N/A') ? `₹${product.price}` : 'TBD'}
-                                        </span>
-                                        {product?.discount_percentage > 0 && (
-                                            <span className="text-[10px] font-black text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded-md">
-                                                {product.discount_percentage}% OFF
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                                {product?.recommendation?.verdict && (
-                                    <div className={`text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-tighter ${
-                                        product.recommendation.verdict === 'BUY' ? 'bg-green-500/10 text-green-500' :
-                                        product.recommendation.verdict === 'CONSIDER' ? 'bg-amber-500/10 text-amber-500' :
-                                        'bg-red-500/10 text-red-500'
-                                    }`}>
-                                        {product.recommendation.verdict}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </motion.div>
-                ))}
+                    </div>
+                </div>
             </div>
+        );
+    };
+
+    const renderGrid = (items, isClose = false) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
+            {items.map((product, idx) => (
+                <ProductCard key={product.id || idx} product={product} isClose={isClose} idx={idx} onSelect={onSelect} />
+            ))}
+        </div>
+    );
+
+    return (
+        <div className="fade-in space-y-16">
+            {/* Perfect Matches */}
+            {hasPerfect && (
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-0.5 rounded" style={{ background: 'var(--olive)' }} />
+                            <h2 className="text-xl font-black uppercase tracking-tight" style={{ color: 'var(--text)' }}>
+                                Best Matches
+                            </h2>
+                        </div>
+                        <span className="text-xs font-black px-4 py-1.5 rounded-full"
+                              style={{ background: 'rgba(112,130,56,0.12)', color: 'var(--olive)', border: '1px solid rgba(112,130,56,0.2)' }}>
+                            {results.length} Found
+                        </span>
+                    </div>
+                    {renderGrid(results)}
+                </div>
+            )}
+
+            {/* Close Matches */}
+            {hasClose && (
+                <div className="space-y-6 pt-8 border-t border-dashed border-beige-2">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-0.5 rounded" style={{ background: 'var(--brown)' }} />
+                        <h2 className="text-xl font-black uppercase tracking-tight" style={{ color: 'var(--brown)' }}>
+                            Near Your Filters
+                        </h2>
+                        <span className="text-[10px] font-bold text-zinc-400 italic">(Close price or platform matches)</span>
+                    </div>
+                    {renderGrid(closeMatches, true)}
+                </div>
+            )}
         </div>
     );
 };

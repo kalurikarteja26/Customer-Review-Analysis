@@ -1,6 +1,11 @@
 import re
 
 def detect_fake_review(text: str, rating: float):
+    try:
+        rating = float(rating)
+    except:
+        rating = 0.0
+
     probability = 0.0
     
     if not text:

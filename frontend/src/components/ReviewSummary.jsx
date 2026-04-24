@@ -1,65 +1,72 @@
 import React from 'react';
-import { ThumbsUp, ThumbsDown, Zap } from 'lucide-react';
 
 const ReviewSummary = ({ summary = {} }) => {
-  const safeSummary = summary || {};
-  const positiveHighlights = Array.isArray(safeSummary?.positive_highlights) ? safeSummary.positive_highlights : [];
-  const negativeHighlights = Array.isArray(safeSummary?.negative_highlights) ? safeSummary.negative_highlights : [];
+    const s = summary || {};
+    const pos = Array.isArray(s?.positive_highlights) ? s.positive_highlights : [];
+    const neg = Array.isArray(s?.negative_highlights) ? s.negative_highlights : [];
 
-  if (!safeSummary?.overall_summary && positiveHighlights.length === 0 && negativeHighlights.length === 0) {
+    if (!s?.overall_summary && pos.length === 0 && neg.length === 0) {
+        return (
+            <div className="p-8 text-center rounded-2xl"
+                 style={{ background: 'var(--beige)', border: '1.5px dashed var(--beige-2)' }}>
+                <p className="text-sm font-bold uppercase tracking-widest" style={{ color: 'var(--text-lt)' }}>
+                    No review insights available
+                </p>
+            </div>
+        );
+    }
+
     return (
-      <div className="bg-white dark:bg-zinc-900 p-8 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm text-center">
-        <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest">No AI consensus data available</p>
-      </div>
+        <div className="rounded-2xl p-6 space-y-6"
+             style={{ background: 'rgba(255,255,255,0.85)', border: '1.5px solid var(--beige-2)' }}>
+            <div className="flex items-center gap-2">
+                <svg className="w-5 h-5" style={{ color: 'var(--olive)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <h3 className="font-black text-base uppercase tracking-wider" style={{ color: 'var(--text)' }}>AI Review Insights</h3>
+            </div>
+
+            {s?.overall_summary && (
+                <div className="p-4 rounded-xl italic text-sm"
+                     style={{ background: 'rgba(112,130,56,0.07)', border: '1px solid rgba(112,130,56,0.15)', color: 'var(--text-md)' }}>
+                    "{s.overall_summary}"
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h4 className="text-xs font-black uppercase tracking-widest mb-3" style={{ color: 'var(--olive)' }}>
+                        ✓ Positive Highlights
+                    </h4>
+                    <ul className="space-y-2">
+                        {pos.length > 0 ? pos.map((h, i) => (
+                            <li key={i} className="text-xs pl-3 py-1"
+                                style={{ color: 'var(--text-md)', borderLeft: '2px solid var(--olive)' }}>
+                                {h}
+                            </li>
+                        )) : (
+                            <li className="text-xs italic" style={{ color: 'var(--text-lt)' }}>No highlights identified.</li>
+                        )}
+                    </ul>
+                </div>
+                <div>
+                    <h4 className="text-xs font-black uppercase tracking-widest mb-3" style={{ color: '#cc3300' }}>
+                        ✗ Negative Highlights
+                    </h4>
+                    <ul className="space-y-2">
+                        {neg.length > 0 ? neg.map((h, i) => (
+                            <li key={i} className="text-xs pl-3 py-1"
+                                style={{ color: 'var(--text-md)', borderLeft: '2px solid #cc3300' }}>
+                                {h}
+                            </li>
+                        )) : (
+                            <li className="text-xs italic" style={{ color: 'var(--text-lt)' }}>No highlights identified.</li>
+                        )}
+                    </ul>
+                </div>
+            </div>
+        </div>
     );
-  }
-
-  return (
-    <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm space-y-6">
-      <div className="flex items-center gap-2 mb-2">
-        <Zap className="w-5 h-5 text-indigo-500" />
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white">AI Review Insights</h3>
-      </div>
-
-      <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800/30">
-        <p className="text-sm text-indigo-900 dark:text-indigo-200 italic">
-          "{safeSummary?.overall_summary || 'No overall summary generated.'}"
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <h4 className="text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-2 mb-3">
-            <ThumbsUp className="w-4 h-4" /> Positive Highlights
-          </h4>
-          <ul className="space-y-2">
-            {positiveHighlights.length > 0 ? positiveHighlights.map((h, i) => (
-              <li key={i} className="text-xs text-gray-600 dark:text-zinc-400 border-l-2 border-emerald-500 pl-3 py-1">
-                {h}
-              </li>
-            )) : (
-              <li className="text-xs text-zinc-400 italic">No specific positive highlights identified.</li>
-            )}
-          </ul>
-        </div>
-
-        <div>
-          <h4 className="text-sm font-bold text-rose-600 dark:text-rose-400 flex items-center gap-2 mb-3">
-            <ThumbsDown className="w-4 h-4" /> Negative Highlights
-          </h4>
-          <ul className="space-y-2">
-            {negativeHighlights.length > 0 ? negativeHighlights.map((h, i) => (
-              <li key={i} className="text-xs text-gray-600 dark:text-zinc-400 border-l-2 border-rose-500 pl-3 py-1">
-                {h}
-              </li>
-            )) : (
-              <li className="text-xs text-zinc-400 italic">No specific negative highlights identified.</li>
-            )}
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
 };
 
 export default ReviewSummary;

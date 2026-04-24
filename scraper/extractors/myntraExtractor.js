@@ -11,7 +11,8 @@ export class MyntraExtractor extends BaseExtractor {
 
         // ── Price ─────────────────────────────────────────────────────────
         const priceText = this.$('.pdp-price').text() ||
-                          this.$('[class*="pdp-price"]').first().text();
+                          this.$('[class*="pdp-price"]').first().text() ||
+                          this.$('.pdp-mrp').text();
         if (priceText) {
             const p = parseFloat(priceText.replace(/[^0-9.]/g, ''));
             if (!isNaN(p)) fallback.price = p;
@@ -20,7 +21,7 @@ export class MyntraExtractor extends BaseExtractor {
         // ── Stock / Availability ──────────────────────────────────────────
         const outOfStock = this.$('.pdp-out-of-stock, [class*="out-of-stock"]').length > 0 ||
                            this.$('body').text().toLowerCase().includes('out of stock');
-        fallback.stock = !outOfStock;
+        fallback.stock = !outOfStock ? "In Stock" : "Out of Stock";
 
         // ── Image ─────────────────────────────────────────────────────────
         const imgEl = this.$('.image-grid-image').first();
@@ -32,6 +33,22 @@ export class MyntraExtractor extends BaseExtractor {
         if (!fallback.image) {
             fallback.image = this.$('.pdp-image img, img.pdp-product-image, .thumbnails-imgContainer img').attr('src');
         }
+
+        // ── Specifications ────────────────────────────────────────────────
+        const specs = {};
+        this.$('.index-row').each((i, el) => {
+            const key = this.$(el).find('.index-rowKey').text().trim();
+            const val = this.$(el).find('.index-rowValue').text().trim();
+            if (key && val) specs[key] = val;
+        });
+        if (Object.keys(specs).length === 0) {
+            this.$('.product-specification-row').each((i, el) => {
+                const key = this.$(el).find('.product-specification-key').text().trim();
+                const val = this.$(el).find('.product-specification-value').text().trim();
+                if (key && val) specs[key] = val;
+            });
+        }
+        fallback.specifications = specs;
 
         // ── Reviews ───────────────────────────────────────────────────────
         const reviews = [];

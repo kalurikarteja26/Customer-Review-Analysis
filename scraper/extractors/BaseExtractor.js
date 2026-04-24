@@ -11,7 +11,7 @@ const ProductSchema = z.object({
   category: z.array(z.string()).default([]),
   image: z.string().nullable().default(null),
   images: z.array(z.string()).default([]),
-  stock: z.string().default("In Stock"),
+  stock: z.any().transform(v => typeof v === 'boolean' ? (v ? "In Stock" : "Out of Stock") : String(v || "In Stock")).default("In Stock"),
   reviews: z.array(z.object({
       author: z.string().default("Anonymous"),
       rating: z.string().default("0"),

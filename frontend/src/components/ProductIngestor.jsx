@@ -1,66 +1,93 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+
+const PLATFORMS = ['Amazon', 'Flipkart', 'Myntra', 'Ajio', 'Snapdeal', 'Meesho'];
 
 const ProductIngestor = ({ onSearch, isLoading }) => {
     const [input, setInput] = useState('');
+    const [selectedPlatforms, setSelectedPlatforms] = useState([]);
+
+    const togglePlatform = (site) => {
+        const platform = site.toLowerCase();
+        setSelectedPlatforms(prev => 
+            prev.includes(platform) ? prev.filter(p => p !== platform) : [...prev, platform]
+        );
+    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (input && !isLoading) {
-            onSearch(input);
-        }
+        if (input.trim() && !isLoading) onSearch({ query: input.trim(), platforms: selectedPlatforms });
     };
 
     return (
-        <motion.div 
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className="w-full max-w-4xl mx-auto mb-16 px-4"
-        >
-            <form onSubmit={handleSubmit} className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-[2.2rem] blur opacity-25 group-hover:opacity-60 transition duration-1000 group-hover:duration-200"></div>
-                <div className="relative flex flex-col md:flex-row items-center bg-white dark:bg-zinc-900 rounded-[2rem] p-3 shadow-2xl border border-white/20 dark:border-zinc-800/50">
-                    <div className="pl-6 text-indigo-500 hidden md:block">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
-                    </div>
-                    <input 
-                        type="text" 
+        <div className="w-full max-w-2xl mx-auto">
+            <form onSubmit={handleSubmit}>
+                <div className="search-wrap flex items-center gap-3 px-5 py-3">
+                    {/* Search icon */}
+                    <svg className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--brown)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+
+                    <input
+                        type="text"
+                        id="main-search-input"
                         value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        placeholder="Search any product across platforms (e.g. best noise cancelling headphones)"
-                        className="flex-1 bg-transparent border-none outline-none px-6 py-4 text-lg text-gray-800 dark:text-zinc-100 font-medium placeholder-gray-400 dark:placeholder-zinc-600"
+                        onChange={e => setInput(e.target.value)}
+                        placeholder="Search any product, brand, or category…"
+                        className="flex-1 bg-transparent border-none outline-none text-base font-medium"
+                        style={{ color: 'var(--text)', caretColor: 'var(--olive)' }}
                         disabled={isLoading}
+                        autoComplete="off"
+                        autoFocus
                     />
-                    <button 
+
+                    <button
                         type="submit"
-                        disabled={isLoading || !input}
-                        className={`w-full md:w-auto px-10 py-5 rounded-[1.5rem] font-black text-sm uppercase tracking-[0.2em] transition-all duration-300 ${
-                            isLoading || !input 
-                            ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed' 
-                            : 'bg-indigo-600 text-white shadow-[0_10px_30px_-5px_rgba(79,70,229,0.5)] hover:bg-indigo-700 hover:scale-[1.02] active:scale-95'
-                        }`}
+                        disabled={isLoading || !input.trim()}
+                        className="btn-primary flex items-center gap-2 flex-shrink-0"
+                        style={{ padding: '0.6rem 1.4rem', fontSize: '0.72rem' }}
                     >
                         {isLoading ? (
-                            <span className="flex items-center justify-center gap-3">
-                                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                                DISCOVERING
-                            </span>
-                        ) : 'DISCOVER PRODUCTS'}
+                            <>
+                                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Searching
+                            </>
+                        ) : (
+                            <>
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                Discover
+                            </>
+                        )}
                     </button>
                 </div>
             </form>
-            
-            <div className="mt-8 flex flex-wrap justify-center gap-6 md:gap-10">
-                {['Amazon', 'Flipkart', 'Myntra', 'Ajio', 'Snapdeal', 'Meesho', 'Nykaa', 'Croma'].map((site) => (
-                    <div key={site} className="flex items-center gap-2 opacity-30 hover:opacity-100 transition-all duration-500 group cursor-default">
-                        <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 group-hover:scale-150 transition-transform"></span>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-zinc-400">{site}</span>
-                    </div>
-                ))}
+
+            {/* Platform tags */}
+            <div className="flex flex-wrap justify-center gap-2 mt-4">
+                {PLATFORMS.map(site => {
+                    const platform = site.toLowerCase();
+                    const isSelected = selectedPlatforms.includes(platform);
+                    return (
+                        <button
+                            key={site}
+                            type="button"
+                            onClick={() => togglePlatform(site)}
+                            className={`platform-pill pill-${platform} transition-all duration-200 flex items-center gap-1.5 px-3 py-1`}
+                            style={{ 
+                                opacity: isSelected ? 1 : 0.7,
+                                transform: isSelected ? 'scale(1.05)' : 'scale(1)',
+                                cursor: 'pointer',
+                                border: isSelected ? '1.5px solid currentColor' : '1.5px solid transparent'
+                            }}
+                        >
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'currentColor', opacity: 1 }} />
+                            {site}
+                        </button>
+                    );
+                })}
             </div>
-        </motion.div>
+        </div>
     );
 };
 

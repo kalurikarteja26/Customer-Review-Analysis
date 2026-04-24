@@ -19,7 +19,7 @@ def run_node_scraper(url: str) -> dict:
             text=True,
             encoding="utf-8",      # ✅ Fix Windows decode errors
             errors="ignore",       # ✅ Ignore invalid characters
-            timeout=45,
+            timeout=120,
             cwd=os.path.join(BASE_DIR, "scraper")
         )
 
@@ -27,8 +27,6 @@ def run_node_scraper(url: str) -> dict:
         stderr = result.stderr or ""
 
         print(f"[DEBUG] Return Code: {result.returncode}")
-        print(f"[DEBUG] STDOUT:\n{stdout}")
-        print(f"[DEBUG] STDERR:\n{stderr}")
 
         # ❌ If Node process failed
         if result.returncode != 0:
@@ -53,8 +51,6 @@ def run_node_scraper(url: str) -> dict:
         except json.JSONDecodeError:
             raise HTTPException(status_code=500, detail="Invalid JSON returned from scraper.")
 
-        print(f"[DEBUG] Parsed Data: {data}")
-
         # ❌ Ensure valid format
         if not isinstance(data, dict):
             raise HTTPException(status_code=500, detail="Invalid scraper response format.")
@@ -78,8 +74,10 @@ def run_node_scraper(url: str) -> dict:
         }
 
     except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="Scraping process timed out.")
+        raise HTTPException(status_code=504, detail="Scraping process timed out (120s limit).")
 
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="Search process timed out (120s limit).")
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
@@ -95,7 +93,7 @@ def run_node_search(query: str) -> list:
             text=True,
             encoding="utf-8",
             errors="ignore",
-            timeout=45,
+            timeout=120,
             cwd=os.path.join(BASE_DIR, "scraper")
         )
 

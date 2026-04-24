@@ -2,9 +2,7 @@
 echo Starting Oracle-Commerce Intelligence Ecosystem Locally...
 
 echo Starting Backend...
-cd backend
-start cmd /k "python -m uvicorn main:app --port 5000"
-cd ..
+start cmd /k "python -m uvicorn backend.main:app --port 5000"
 
 echo Starting Frontend...
 cd frontend

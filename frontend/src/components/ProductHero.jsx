@@ -1,129 +1,186 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import DynamicGallery from './DynamicGallery';
+import React, { useState } from 'react';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000';
+const proxyImage = (url) => {
+    if (!url || url.startsWith('/') || url.startsWith('data:')) return url || '';
+    if (url.includes('127.0.0.1') || url.includes('localhost') || url.includes('/product-image/')) return url;
+    return `${API_BASE}/image-proxy?url=${encodeURIComponent(url)}`;
+};
+
+const PLATFORM_COLORS = {
+    amazon:   { bg: '#fff8ed', text: '#c45000', border: '#f5a058' },
+    flipkart: { bg: '#edf3ff', text: '#1855d4', border: '#8aabf7' },
+    myntra:   { bg: '#fff0f6', text: '#c21b6e', border: '#f59ec4' },
+    ajio:     { bg: '#f3f0ff', text: '#6340cc', border: '#c0aff7' },
+    snapdeal: { bg: '#fff2ed', text: '#cc3300', border: '#f7a07a' },
+    meesho:   { bg: '#fff0ff', text: '#aa1faa', border: '#e899e8' },
+    default:  { bg: 'var(--beige)', text: 'var(--brown-dk)', border: 'var(--brown)' },
+};
+
+const StarRating = ({ rating }) => {
+    const r = Math.min(5, Math.max(0, parseFloat(rating) || 0));
+    return (
+        <div className="flex items-center gap-1">
+            {[...Array(5)].map((_, i) => (
+                <svg key={i} className="w-4 h-4" viewBox="0 0 20 20"
+                     style={{ fill: i < Math.round(r) ? '#e8a020' : '#ddd' }}>
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+            ))}
+            <span className="text-sm font-bold ml-1" style={{ color: 'var(--text-lt)' }}>
+                {r > 0 ? r.toFixed(1) : '—'}
+            </span>
+        </div>
+    );
+};
 
 const ProductHero = ({ product = {} }) => {
-    const safeProduct = product || {};
-    if (Object.keys(safeProduct).length === 0) return null;
+    const safe = product || {};
+    if (Object.keys(safe).length === 0) return null;
 
-    const sourceColors = {
-        amazon: 'from-orange-500 to-amber-500',
-        flipkart: 'from-blue-600 to-indigo-500',
-        myntra: 'from-pink-500 to-rose-400',
-        meesho: 'from-purple-600 to-indigo-500',
-        ajio: 'from-teal-500 to-cyan-400',
-        snapdeal: 'from-red-600 to-rose-500',
-        default: 'from-gray-600 to-zinc-500'
-    };
+    const platform = (safe?.platform || '').toLowerCase();
+    const pc = PLATFORM_COLORS[platform] || PLATFORM_COLORS.default;
 
-    const platform = safeProduct?.platform?.toLowerCase() || 'default';
-    const sourceGradient = sourceColors[platform] || sourceColors.default;
-    const productImage = safeProduct?.image || "/placeholder-product.png";
+    // Build image list
+    const rawImages = safe?.images?.length > 0 ? safe.images : (safe?.image ? [safe.image] : []);
+    const images = rawImages.map(proxyImage).filter(Boolean);
+    const [activeIdx, setActiveIdx] = useState(0);
+    const mainImg = images[activeIdx] || '';
+
+    const price = safe?.price;
+    const origPrice = safe?.original_price;
+    const discount = safe?.discount_percentage;
 
     return (
-        <div className="w-full bg-white/40 dark:bg-zinc-900/40 backdrop-blur-2xl rounded-[2.5rem] border border-white/20 dark:border-zinc-800/50 shadow-2xl overflow-hidden mb-8">
+        <div className="rounded-3xl overflow-hidden"
+             style={{ background: 'rgba(255,255,255,0.85)', border: '1.5px solid var(--beige-2)', boxShadow: '0 8px 40px rgba(120,90,60,0.10)' }}>
             <div className="flex flex-col lg:flex-row">
-                {/* Visual Section */}
-                <div className="w-full lg:w-1/2 p-8 lg:p-12 flex flex-col relative bg-gradient-to-br from-indigo-50/30 to-white/30 dark:from-zinc-950/30 dark:to-zinc-900/30">
-                    <div className="absolute top-8 left-8 flex flex-col gap-3 z-20">
-                        <span className={`px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-white shadow-lg bg-gradient-to-r ${sourceGradient}`}>
-                            {safeProduct?.platform || 'Verified Source'}
-                        </span>
-                        <span className={`px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg backdrop-blur-md border ${
-                            safeProduct?.stock === 'In Stock' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 
-                            safeProduct?.stock === 'Limited Stock' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
-                            'bg-rose-500/10 text-rose-600 border-rose-500/20'
-                        }`}>
-                            {safeProduct?.stock || 'STOCK UNKNOWN'}
-                        </span>
+
+                {/* ── IMAGE COLUMN ── */}
+                <div className="w-full lg:w-[45%] flex flex-col p-6" style={{ background: 'var(--beige)' }}>
+                    {/* Main image */}
+                    <div className="relative w-full rounded-2xl overflow-hidden mb-4 flex items-center justify-center"
+                         style={{ height: '340px', background: 'rgba(255,255,255,0.9)' }}>
+                        {mainImg ? (
+                            <img
+                                src={mainImg}
+                                alt={safe?.title || 'Product'}
+                                className="max-w-full max-h-full object-contain p-4"
+                                referrerPolicy="no-referrer"
+                                onError={e => { e.target.style.display = 'none'; }}
+                            />
+                        ) : (
+                            <div className="flex flex-col items-center gap-3">
+                                <svg className="w-14 h-14" style={{ color: 'var(--brown)', opacity: 0.3 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span className="text-xs font-medium" style={{ color: 'var(--text-lt)' }}>No image available</span>
+                            </div>
+                        )}
+                        {/* Platform badge */}
+                        <div className="absolute top-3 left-3">
+                            <span className="px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest"
+                                  style={{ background: pc.bg, color: pc.text, border: `1px solid ${pc.border}` }}>
+                                {safe?.platform || 'Store'}
+                            </span>
+                        </div>
+                        {/* Stock badge */}
+                        <div className="absolute top-3 right-3">
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold"
+                                  style={{
+                                      background: safe?.stock === 'In Stock' ? 'rgba(112,130,56,0.12)' : 'rgba(204,51,0,0.08)',
+                                      color: safe?.stock === 'In Stock' ? 'var(--olive)' : '#cc3300',
+                                      border: `1px solid ${safe?.stock === 'In Stock' ? 'rgba(112,130,56,0.2)' : 'rgba(204,51,0,0.15)'}`,
+                                  }}>
+                                {safe?.stock || 'In Stock'}
+                            </span>
+                        </div>
                     </div>
 
-                    <div className="flex-1 flex items-center justify-center pt-16">
-                        <DynamicGallery images={safeProduct?.images?.length > 0 ? safeProduct.images : [productImage]} />
-                    </div>
-
-                    <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-indigo-500/5 rounded-full blur-[80px]"></div>
+                    {/* Thumbnail strip */}
+                    {images.length > 1 && (
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                            {images.slice(0, 6).map((img, i) => (
+                                <button key={i}
+                                    onClick={() => setActiveIdx(i)}
+                                    className="flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden transition-all duration-200"
+                                    style={{
+                                        border: i === activeIdx ? '2px solid var(--olive)' : '1.5px solid var(--beige-2)',
+                                        background: 'white',
+                                    }}>
+                                    <img src={img} alt="" className="w-full h-full object-contain p-1"
+                                         referrerPolicy="no-referrer" onError={e => e.target.style.display='none'} />
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
-                {/* Intel Section */}
-                <div className="w-full lg:w-1/2 p-12 lg:p-16 flex flex-col justify-center border-l border-white/10 dark:border-zinc-800/50">
-                    <motion.div
-                        initial={{ x: 20, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.2, duration: 0.6 }}
-                    >
-                        <h1 className="text-3xl md:text-5xl font-black text-gray-900 dark:text-white mb-6 leading-[1.1] tracking-tight">
-                            {safeProduct?.title || 'Unknown Product Information'}
-                        </h1>
+                {/* ── INFO COLUMN ── */}
+                <div className="w-full lg:w-[55%] p-8 lg:p-10 flex flex-col justify-center">
+                    <h1 className="font-black leading-tight mb-5"
+                        style={{ fontSize: 'clamp(1.3rem, 2.5vw, 2rem)', color: 'var(--text)' }}>
+                        {safe?.title || 'Product Details'}
+                    </h1>
 
-                        <div className="flex items-center gap-8 mb-10">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Exchange Value</span>
-                                <div className="flex items-baseline gap-3">
-                                    <span className="text-5xl font-black text-indigo-600 dark:text-indigo-400 tracking-tighter">
-                                        {safeProduct?.price ? `₹${safeProduct.price.toLocaleString()}` : 'N/A'}
-                                    </span>
-                                    {safeProduct?.original_price && (
-                                        <span className="text-lg text-zinc-400 line-through font-bold">
-                                            ₹{safeProduct.original_price.toLocaleString()}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                            {safeProduct?.discount && (
-                                <div className="px-4 py-2 bg-rose-500 text-white text-xs font-black rounded-xl animate-pulse shadow-lg shadow-rose-500/40">
-                                    {safeProduct.discount}
-                                </div>
-                            )}
+                    {/* Price row */}
+                    <div className="flex items-end gap-4 mb-6">
+                        <span className="font-black" style={{ fontSize: '2.5rem', color: 'var(--text)', lineHeight: 1 }}>
+                            {price && String(price) !== 'N/A'
+                                ? `₹${Number(price).toLocaleString('en-IN')}`
+                                : 'Price TBD'}
+                        </span>
+                        {origPrice && String(origPrice) !== 'N/A' && origPrice !== price && (
+                            <span className="text-lg line-through" style={{ color: 'var(--text-lt)' }}>
+                                ₹{Number(origPrice).toLocaleString('en-IN')}
+                            </span>
+                        )}
+                        {discount > 0 && (
+                            <span className="px-3 py-1.5 rounded-full text-xs font-black text-white"
+                                  style={{ background: 'var(--olive)' }}>
+                                {discount}% OFF
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Rating */}
+                    <div className="mb-6">
+                        <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-lt)' }}>Customer Rating</p>
+                        <StarRating rating={safe?.rating} />
+                    </div>
+
+                    {/* Category */}
+                    {safe?.category && (
+                        <div className="mb-6">
+                            <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-lt)' }}>Category</p>
+                            <p className="text-sm font-semibold" style={{ color: 'var(--text-md)' }}>
+                                {Array.isArray(safe.category) ? safe.category[safe.category.length - 1] : safe.category}
+                            </p>
                         </div>
+                    )}
 
-                        <div className="grid grid-cols-2 gap-8 mb-10">
-                            <div>
-                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-2">Category Intel</span>
-                                <p className="text-lg font-bold text-gray-800 dark:text-zinc-200">
-                                    {Array.isArray(safeProduct?.category) ? safeProduct.category[safeProduct.category.length - 1] : (safeProduct?.category || 'General Intelligence')}
-                                </p>
-                            </div>
-                            <div>
-                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-2">Market Sentiment</span>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-3xl font-black text-gray-900 dark:text-white">{safeProduct?.rating || '0.0'}</span>
-                                    <div className="flex">
-                                        {[...Array(5)].map((_, i) => (
-                                            <svg 
-                                                key={i} 
-                                                className={`w-5 h-5 ${i < Math.floor(parseFloat(safeProduct?.rating || 0)) ? 'text-yellow-400 fill-yellow-400' : 'text-zinc-200 dark:text-zinc-800'}`} 
-                                                viewBox="0 0 20 20"
-                                            >
-                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                                            </svg>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2 mb-12">
-                            {Object.entries(safeProduct?.specifications || {}).slice(0, 4).map(([key, val]) => (
-                                <div key={key} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl border border-zinc-200/50 dark:border-zinc-700/50 flex flex-col">
-                                    <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-tight">{key}</span>
-                                    <span className="text-xs font-black text-gray-800 dark:text-zinc-100 truncate max-w-[150px]">{val}</span>
+                    {/* Specs chips */}
+                    {Object.keys(safe?.specifications || {}).length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-8">
+                            {Object.entries(safe.specifications).slice(0, 5).map(([k, v]) => (
+                                <div key={k} className="px-3 py-2 rounded-xl flex flex-col"
+                                     style={{ background: 'var(--beige)', border: '1px solid var(--beige-2)' }}>
+                                    <span className="text-[9px] font-bold uppercase tracking-tight" style={{ color: 'var(--text-lt)' }}>{k}</span>
+                                    <span className="text-xs font-black" style={{ color: 'var(--text)' }}>{v}</span>
                                 </div>
                             ))}
                         </div>
+                    )}
 
-                        <a 
-                            href={safeProduct?.url || '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full group relative inline-flex items-center justify-center px-8 py-6 font-black text-white transition-all duration-300 bg-indigo-600 rounded-[2rem] hover:bg-indigo-700 focus:outline-none shadow-[0_20px_40px_-10px_rgba(79,70,229,0.5)] active:scale-95"
-                        >
-                            <span>VIEW ON {platform.toUpperCase()} PLATFORM</span>
-                            <svg className="w-5 h-5 ml-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                            </svg>
-                        </a>
-                    </motion.div>
+                    {/* CTA */}
+                    <a href={safe?.url || '#'} target="_blank" rel="noopener noreferrer"
+                       className="btn-primary inline-flex items-center justify-center gap-3 text-center w-full lg:w-auto"
+                       style={{ maxWidth: '320px' }}>
+                        View on {(safe?.platform || 'Platform').charAt(0).toUpperCase() + (safe?.platform || 'platform').slice(1)}
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                    </a>
                 </div>
             </div>
         </div>
