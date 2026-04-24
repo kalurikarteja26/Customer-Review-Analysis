@@ -1,38 +1,16 @@
 import React from 'react';
-const API_URL = "https://customer-review-analysis-3.onrender.com";
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Navigation from './components/Navigation';
-import ProductIngestor from './components/ProductIngestor';
-import ProductDisplay from './pages/ProductDisplay';
-import ErrorBoundary from './components/ErrorBoundary';
-import CatalogGallery from './components/CatalogGallery';
+import Header from './components/Header';
+import Home from './pages/Home';
 
 function App() {
   return (
-    <BrowserRouter>
-      <ErrorBoundary>
-        <div className="min-h-screen bg-background text-textMain flex flex-col font-sans selection:bg-primary/30">
-          <Navigation />
-          
-          <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6">
-            <Routes>
-              {/* Home Page Route */}
-              <Route path="/" element={
-                 <section className="w-full h-auto mt-12 flex flex-col items-center">
-                    <div className="w-full max-w-3xl">
-                       <ProductIngestor />
-                       <CatalogGallery />
-                    </div>
-                 </section>
-              } />
-
-              {/* Dynamic Product Route */}
-              <Route path="/product/:productId" element={<ProductDisplay />} />
-            </Routes>
-          </main>
-        </div>
-      </ErrorBoundary>
-    </BrowserRouter>
+    <div className="font-sans min-h-screen bg-gray-50 text-gray-900 dark:bg-black dark:text-zinc-100 selection:bg-indigo-500/30 selection:text-indigo-900 dark:selection:text-indigo-200">
+      <div className="fixed inset-0 z-[-1] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-50 via-white to-white dark:from-zinc-900 dark:via-black dark:to-black opacity-70"></div>
+      
+      <Header />
+      <Home />
+      
+    </div>
   );
 }
 

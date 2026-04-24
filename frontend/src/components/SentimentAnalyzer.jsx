@@ -1,137 +1,119 @@
-import React, { useState, useContext, useEffect } from 'react';
-import { Activity, Play, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
-import { AppContext } from '../App';
+import React, { useState } from 'react';
 import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const SentimentAnalyzer = () => {
-  const { setAnalysisResult, isAnalyzing, setIsAnalyzing } = useContext(AppContext);
-  const [reviewText, setReviewText] = useState('');
-  const [livePreview, setLivePreview] = useState('Neutral');
+const SentimentAnalyzer = ({ productMeta, category }) => {
+    const [reviewText, setReviewText] = useState('');
+    const [sentiment, setSentiment] = useState('Positive');
+    const [draft, setDraft] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
-  // Naive live preview logic entirely on frontend
-  useEffect(() => {
-    const text = reviewText.toLowerCase();
-    if (text.length < 5) {
-      setLivePreview('Neutral');
-      return;
-    }
-    const positiveWords = ['great', 'excellent', 'good', 'amazing', 'love', 'perfect'];
-    const negativeWords = ['bad', 'terrible', 'awful', 'hate', 'poor', 'worst', 'broken'];
-    
-    let score = 0;
-    positiveWords.forEach(w => { if (text.includes(w)) score++; });
-    negativeWords.forEach(w => { if (text.includes(w)) score--; });
+    const handleGenerate = async () => {
+        if (!reviewText) return;
+        setIsLoading(true);
+        try {
+            const response = await axios.post('http://127.0.0.1:5000/draft-response', {
+                review_text: reviewText,
+                sentiment: sentiment,
+                product_name: productMeta?.name || 'Product',
+                category: category || 'General',
+                attributes: {}
+            });
+            setDraft(response.data.draft);
+        } catch (error) {
+            console.error("Draft generation failed", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-    if (score > 0) setLivePreview('Positive');
-    else if (score < 0) setLivePreview('Negative');
-    else setLivePreview('Neutral');
-  }, [reviewText]);
+    return (
+        <div className="bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl rounded-3xl border border-white/20 dark:border-zinc-800/50 shadow-2xl p-8 mt-12">
+            <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-6 flex items-center gap-3">
+                <span className="p-2 bg-indigo-500 rounded-lg text-white">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                </span>
+                Agentic Response Architect
+            </h3>
 
-  const handleAnalysis = async () => {
-    if (!reviewText.trim()) return;
-    
-    setIsAnalyzing(true);
-    
-    try {
-      // Hit the Flask backend
-      const response = await axios.post('http://127.0.0.1:5000/analyze', {
-        text: reviewText
-      });
-      setAnalysisResult(response.data);
-    } catch (error) {
-      console.error('API Error:', error);
-      // Fallback dummy data if backend isn't running yet
-      setTimeout(() => {
-        setAnalysisResult({
-          sentiment: livePreview,
-          confidence: 0.89,
-          keywords: ['battery', 'screen', 'heavy'],
-          aspects: {
-            "Build Quality": 4,
-            "Value": 2,
-            "Features": 5
-          }
-        });
-      }, 1500);
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                    <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest">Inbound Review Text</label>
+                    <textarea 
+                        className="w-full h-40 p-4 rounded-2xl bg-white/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 text-sm text-gray-800 dark:text-zinc-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                        placeholder="Paste a customer review here to generate a high-context response..."
+                        value={reviewText}
+                        onChange={(e) => setReviewText(e.target.value)}
+                    />
+                    
+                    <div className="flex gap-4">
+                        <div className="flex-1">
+                            <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Detected Sentiment</label>
+                            <select 
+                                className="w-full p-3 rounded-xl bg-white/50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm font-bold outline-none"
+                                value={sentiment}
+                                onChange={(e) => setSentiment(e.target.value)}
+                            >
+                                <option value="Positive">Positive</option>
+                                <option value="Neutral">Neutral</option>
+                                <option value="Negative">Negative</option>
+                            </select>
+                        </div>
+                        <button 
+                            onClick={handleGenerate}
+                            disabled={isLoading || !reviewText}
+                            className="flex-1 mt-6 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2"
+                        >
+                            {isLoading ? 'Architecting...' : 'Generate Intel Draft'}
+                        </button>
+                    </div>
+                </div>
 
-  const getStatusColor = (status) => {
-    if (status === 'Positive') return 'text-emerald-500 bg-emerald-50 border-emerald-200';
-    if (status === 'Negative') return 'text-rose-600 bg-rose-50 border-rose-200';
-    return 'text-amber-500 bg-amber-50 border-amber-200';
-  };
-
-  return (
-    <div className="glass-panel p-6 lg:p-8 flex flex-col h-full">
-      <div className="flex items-center gap-3 mb-6">
-        <Activity className="w-6 h-6 text-indigo-500" />
-        <h2 className="text-xl font-bold text-slate-900 tracking-tight">Customer Voice Analysis</h2>
-      </div>
-
-      <div className="flex-1 flex flex-col justify-between">
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Paste Customer Review
-          </label>
-          <div className="relative mb-4">
-            <textarea
-              className="input-premium h-40 font-mono text-sm"
-              placeholder="e.g. 'The screen is absolutely gorgeous, but the battery life barely lasts a day...'"
-              value={reviewText}
-              onChange={(e) => setReviewText(e.target.value)}
-            />
-            {/* Live Preview Indicator */}
-            <div className="absolute bottom-3 right-3 flex items-center gap-2">
-              <span className="text-xs font-medium text-slate-500">Live Prediction:</span>
-              <span className={`text-xs font-bold px-2 py-1 rounded-md border ${getStatusColor(livePreview)} transition-colors`}>
-                {livePreview}
-              </span>
+                <div className="space-y-4">
+                    <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest">AI Generated Draft Response</label>
+                    <div className="w-full h-[228px] p-6 rounded-2xl bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/20 relative overflow-hidden">
+                        <AnimatePresence mode="wait">
+                            {draft ? (
+                                <motion.p 
+                                    key="draft"
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="text-gray-800 dark:text-zinc-200 text-sm leading-relaxed"
+                                >
+                                    {draft}
+                                </motion.p>
+                            ) : (
+                                <motion.div 
+                                    key="placeholder"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="h-full flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-600 italic text-sm text-center"
+                                >
+                                    <svg className="w-12 h-12 mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                                    </svg>
+                                    Awaiting input for drafting...
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                        {draft && (
+                            <button 
+                                onClick={() => navigator.clipboard.writeText(draft)}
+                                className="absolute bottom-4 right-4 p-2 bg-white dark:bg-zinc-800 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-700 hover:scale-110 transition-transform"
+                                title="Copy to clipboard"
+                            >
+                                <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                                </svg>
+                            </button>
+                        )}
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
-
-        <button
-          onClick={handleAnalysis}
-          disabled={!reviewText.trim() || isAnalyzing}
-          className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed group relative overflow-hidden"
-        >
-          {isAnalyzing ? (
-            <>
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Processing via AI Engine...
-            </>
-          ) : (
-            <>
-              <Play className="w-5 h-5 fill-current" />
-              Run Deep Analysis
-              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out" />
-            </>
-          )}
-        </button>
-      </div>
-
-      <div className="mt-6 pt-5 border-t border-slate-100 grid grid-cols-3 gap-4 text-center">
-        <div className="flex flex-col items-center">
-          <CheckCircle2 className="w-5 h-5 text-emerald-500 mb-1" />
-          <span className="text-xs text-slate-500 font-medium tracking-wide">Context Aware</span>
-        </div>
-        <div className="flex flex-col items-center border-l border-r border-slate-100">
-          <AlertCircle className="w-5 h-5 text-indigo-500 mb-1" />
-          <span className="text-xs text-slate-500 font-medium tracking-wide">Sarcasm Detection</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <Clock className="w-5 h-5 text-blue-500 mb-1" />
-          <span className="text-xs text-slate-500 font-medium tracking-wide">~150ms Response</span>
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default SentimentAnalyzer;

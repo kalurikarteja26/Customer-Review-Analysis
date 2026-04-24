@@ -1,237 +1,130 @@
-import React, { useMemo } from 'react';
-import { Star, TrendingUp, Box, ShieldCheck, Activity, Droplet, Users, Zap, Tag, Globe } from 'lucide-react';
+import React from 'react';
+import { motion } from 'framer-motion';
 import DynamicGallery from './DynamicGallery';
-import useCurrency from '../hooks/useCurrency';
 
-const CATEGORY_CONFIG = {
-    Shoes: {
-        icon: <Users className="w-4 h-4" />,
-        badge: 'Fit Verified',
-        desc: 'Analyzed through the Sentix-Prime Footwear Intelligence Framework. Sole technology, comfort ratings, and material quality synthesized from live buyer feedback.',
-        accent: 'text-emerald-400',
-    },
-    Footwear: {
-        icon: <Users className="w-4 h-4" />,
-        badge: 'Fit Verified',
-        desc: 'Analyzed through the Sentix-Prime Footwear Intelligence Framework. Sole technology, comfort ratings, and material quality synthesized from live buyer feedback.',
-        accent: 'text-emerald-400',
-    },
-    Electronics: {
-        icon: <Activity className="w-4 h-4" />,
-        badge: 'Warranty Verified',
-        desc: 'Analyzed through the Sentix-Prime Electronics Framework. Performance benchmarks, battery longevity, and build quality aggregated across verified purchases.',
-        accent: 'text-blue-400',
-    },
-    Beauty: {
-        icon: <Droplet className="w-4 h-4" />,
-        badge: 'Skin Safe Verified',
-        desc: 'Analyzed through the Sentix-Prime Beauty Intelligence layer. Ingredient safety, skin compatibility, and longevity verified across dermatological reviews.',
-        accent: 'text-pink-400',
-    },
-    Apparel: {
-        icon: <Tag className="w-4 h-4" />,
-        badge: 'Quality Stitched',
-        desc: 'Material composition, sizing accuracy, and wash durability synthesized from verified fashion buyer sentiment.',
-        accent: 'text-purple-400',
-    },
-};
+const ProductHero = ({ product = {} }) => {
+    const safeProduct = product || {};
+    if (Object.keys(safeProduct).length === 0) return null;
 
-const defaultConfig = {
-    icon: <ShieldCheck className="w-4 h-4" />,
-    badge: 'Quality Ensured',
-    desc: 'Analyzed through the Sentix-Prime Universal Framework. Historical and semantic data synthesized to provide unbiased sentiment aggregation.',
-    accent: 'text-primary',
-};
+    const sourceColors = {
+        amazon: 'from-orange-500 to-amber-500',
+        flipkart: 'from-blue-600 to-indigo-500',
+        myntra: 'from-pink-500 to-rose-400',
+        meesho: 'from-purple-600 to-indigo-500',
+        ajio: 'from-teal-500 to-cyan-400',
+        snapdeal: 'from-red-600 to-rose-500',
+        default: 'from-gray-600 to-zinc-500'
+    };
 
-const ProductHero = ({ productData }) => {
-    if (!productData) return null;
-    const { product_meta, category, current_sentiment_score } = productData;
-
-    const config = CATEGORY_CONFIG[category] || defaultConfig;
-
-    // Stable brand authority score (not re-randomized on every render)
-    const brandScore = useMemo(() => Math.floor(Math.random() * 20 + 78), [product_meta?.name]);
-
-    // ── Geospatial Currency Detection ──
-    const { symbol, currency, countryName, countryCode, rateSource, isBaseCurrency, loading: currencyLoading, formatPrice } = useCurrency();
-
-    // Base price is always stored as INR on the backend
-    const basePriceINR = typeof product_meta?.price === 'number' ? product_meta.price : 0;
-    const priceFormatted = formatPrice(basePriceINR);
-    const displaySymbol = symbol;
-    const displayPrice  = priceFormatted.display;
-    const currencyLabel = `${countryName} · ${currency}`;
-    const showConversionHint = !isBaseCurrency && basePriceINR > 0;
+    const platform = safeProduct?.platform?.toLowerCase() || 'default';
+    const sourceGradient = sourceColors[platform] || sourceColors.default;
+    const productImage = safeProduct?.image || "/placeholder-product.png";
 
     return (
-        <div className="bloomberg-panel p-6 lg:p-8 border border-white/5 rounded-xl mb-4 bg-gradient-to-b from-surface to-black/40">
-            <div className="flex flex-col md:flex-row gap-8">
+        <div className="w-full bg-white/40 dark:bg-zinc-900/40 backdrop-blur-2xl rounded-[2.5rem] border border-white/20 dark:border-zinc-800/50 shadow-2xl overflow-hidden mb-8">
+            <div className="flex flex-col lg:flex-row">
+                {/* Visual Section */}
+                <div className="w-full lg:w-1/2 p-8 lg:p-12 flex flex-col relative bg-gradient-to-br from-indigo-50/30 to-white/30 dark:from-zinc-950/30 dark:to-zinc-900/30">
+                    <div className="absolute top-8 left-8 flex flex-col gap-3 z-20">
+                        <span className={`px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-white shadow-lg bg-gradient-to-r ${sourceGradient}`}>
+                            {safeProduct?.platform || 'Verified Source'}
+                        </span>
+                        <span className={`px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg backdrop-blur-md border ${
+                            safeProduct?.stock === 'In Stock' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 
+                            safeProduct?.stock === 'Limited Stock' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                            'bg-rose-500/10 text-rose-600 border-rose-500/20'
+                        }`}>
+                            {safeProduct?.stock || 'STOCK UNKNOWN'}
+                        </span>
+                    </div>
 
-                {/* Left: Image Gallery — Asset Hierarchy with View Labels */}
-                <div className="w-full md:w-1/3 min-h-[340px]">
-                    <DynamicGallery
-                        images={product_meta?.images ?? []}
-                        name={product_meta?.name ?? 'Product'}
-                        viewLabels={product_meta?.view_labels ?? undefined}
-                    />
+                    <div className="flex-1 flex items-center justify-center pt-16">
+                        <DynamicGallery images={safeProduct?.images?.length > 0 ? safeProduct.images : [productImage]} />
+                    </div>
+
+                    <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-indigo-500/5 rounded-full blur-[80px]"></div>
                 </div>
 
-                {/* Right: Product Info */}
-                <div className="w-full md:w-2/3 flex flex-col justify-between py-2">
-                    <div>
-                        {/* Category + Title + Price */}
-                        <div className="flex justify-between items-start mb-3 gap-4">
-                            <div className="flex-1 min-w-0">
-                                <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${config.accent}`}>
-                                    Sentix / {category}
-                                </p>
-                                <h1 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight leading-tight">
-                                    {product_meta?.name ?? 'Unknown Product'}
-                                </h1>
-                            </div>
-                            {/* 
-                                PRICE BLOCK — Visual Weight & DCC Spec:
-                                - Symbol and number: identical font-weight, size, color, lineHeight
-                                - displaySymbol + displayPrice come from useCurrency (IP geolocation)
-                                - showConversionHint shown for non-INR users
-                            */}
-                            <div className="text-right flex flex-col items-end flex-shrink-0">
-                                {/* Loading skeleton */}
-                                {currencyLoading ? (
-                                    <div className="h-10 w-28 bg-white/5 rounded animate-pulse" />
-                                ) : (
-                                    <div className="flex items-baseline gap-0 leading-none">
-                                        {/* Symbol — unit-cohesive, zero kerning, identical weight */}
-                                        <span
-                                            className="font-mono font-black text-white"
-                                            style={{ fontSize: '1.85rem', lineHeight: 1, letterSpacing: '0' }}
-                                        >
-                                            {displaySymbol}
-                                        </span>
-                                        {/* Number — same exact styling */}
-                                        <span
-                                            className="font-mono font-black text-white"
-                                            style={{ fontSize: '1.85rem', lineHeight: 1, letterSpacing: '-0.01em' }}
-                                        >
-                                            {displayPrice}
-                                        </span>
-                                    </div>
-                                )}
+                {/* Intel Section */}
+                <div className="w-full lg:w-1/2 p-12 lg:p-16 flex flex-col justify-center border-l border-white/10 dark:border-zinc-800/50">
+                    <motion.div
+                        initial={{ x: 20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: 0.2, duration: 0.6 }}
+                    >
+                        <h1 className="text-3xl md:text-5xl font-black text-gray-900 dark:text-white mb-6 leading-[1.1] tracking-tight">
+                            {safeProduct?.title || 'Unknown Product Information'}
+                        </h1>
 
-                                {/* Currency label: dynamically updated via geolocation */}
-                                <div className="flex items-center gap-1 mt-1">
-                                    <Globe className="w-2.5 h-2.5 text-textMuted" />
-                                    <span className="text-[9px] font-mono text-textMuted uppercase tracking-widest">
-                                        {currencyLabel}
+                        <div className="flex items-center gap-8 mb-10">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Exchange Value</span>
+                                <div className="flex items-baseline gap-3">
+                                    <span className="text-5xl font-black text-indigo-600 dark:text-indigo-400 tracking-tighter">
+                                        {safeProduct?.price ? `₹${safeProduct.price.toLocaleString()}` : 'N/A'}
                                     </span>
-                                    {rateSource === 'live' && (
-                                        <span className="text-[8px] font-mono text-positive uppercase ml-1">· Live Rate</span>
+                                    {safeProduct?.original_price && (
+                                        <span className="text-lg text-zinc-400 line-through font-bold">
+                                            ₹{safeProduct.original_price.toLocaleString()}
+                                        </span>
                                     )}
                                 </div>
-
-                                {/* Conversion hint for non-India users */}
-                                {showConversionHint && (
-                                    <p className="text-[9px] text-textMuted font-mono mt-1">
-                                        Base: ₹{basePriceINR.toLocaleString('en-IN')} INR
-                                    </p>
-                                )}
-
-                                <p className="text-[10px] text-positive border border-positive/30 bg-positive/10 px-2 py-0.5 rounded font-mono tracking-widest mt-2 uppercase">
-                                    In Stock
-                                </p>
                             </div>
-                        </div>
-
-                        {/* Live Sentiment Score — Information Density per Master Spec */}
-                        <div className="flex items-center gap-3 mb-5 bg-black/20 border border-white/5 rounded-lg px-4 py-3">
-                            <div className="flex gap-0.5">
-                                {[1, 2, 3, 4, 5].map(i => (
-                                    <Star
-                                        key={i}
-                                        className={`w-4 h-4 ${
-                                            i <= Math.floor(current_sentiment_score)
-                                                ? 'fill-amber-400 text-amber-400'
-                                                : i - 0.5 <= current_sentiment_score
-                                                ? 'fill-amber-400/50 text-amber-400'
-                                                : 'text-slate-700'
-                                        }`}
-                                    />
-                                ))}
-                            </div>
-                            <div className="h-4 w-px bg-white/10" />
-                            <div>
-                                <span className="font-mono font-black text-white" style={{ fontSize: '1.1rem' }}>
-                                    {current_sentiment_score}
-                                </span>
-                                <span className="font-mono text-textMuted text-sm"> / 5.0</span>
-                            </div>
-                            <span className="text-[9px] font-mono uppercase tracking-widest text-primary border border-primary/30 bg-primary/10 px-2 py-0.5 rounded ml-auto">
-                                Live Sentiment Score
-                            </span>
-                        </div>
-
-                        {/* Meta Row */}
-                        <div className="grid grid-cols-2 gap-3 mb-5 text-sm">
-                            {product_meta?.material && (
-                                <div className="flex items-center gap-2 text-textMuted">
-                                    <Box className="w-4 h-4 flex-shrink-0" />
-                                    <span>
-                                        <span className="font-medium text-white">Material: </span>
-                                        {product_meta.material}
-                                    </span>
-                                </div>
-                            )}
-                            <div className="flex items-center gap-2 text-textMuted">
-                                {config.icon}
-                                <span className="font-medium text-white">{config.badge}</span>
-                            </div>
-                            {product_meta?.origin && product_meta.origin !== 'Unknown' && (
-                                <div className="flex items-center gap-2 text-textMuted">
-                                    <Zap className="w-4 h-4 flex-shrink-0" />
-                                    <span>
-                                        <span className="font-medium text-white">Origin: </span>
-                                        {product_meta.origin}
-                                    </span>
+                            {safeProduct?.discount && (
+                                <div className="px-4 py-2 bg-rose-500 text-white text-xs font-black rounded-xl animate-pulse shadow-lg shadow-rose-500/40">
+                                    {safeProduct.discount}
                                 </div>
                             )}
                         </div>
 
-                        {/* Description */}
-                        <p className="text-textMuted leading-relaxed text-sm max-w-2xl bg-black/30 p-4 rounded-lg border border-white/5 font-sans">
-                            {config.desc}
-                        </p>
-                    </div>
+                        <div className="grid grid-cols-2 gap-8 mb-10">
+                            <div>
+                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-2">Category Intel</span>
+                                <p className="text-lg font-bold text-gray-800 dark:text-zinc-200">
+                                    {Array.isArray(safeProduct?.category) ? safeProduct.category[safeProduct.category.length - 1] : (safeProduct?.category || 'General Intelligence')}
+                                </p>
+                            </div>
+                            <div>
+                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-2">Market Sentiment</span>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-3xl font-black text-gray-900 dark:text-white">{safeProduct?.rating || '0.0'}</span>
+                                    <div className="flex">
+                                        {[...Array(5)].map((_, i) => (
+                                            <svg 
+                                                key={i} 
+                                                className={`w-5 h-5 ${i < Math.floor(parseFloat(safeProduct?.rating || 0)) ? 'text-yellow-400 fill-yellow-400' : 'text-zinc-200 dark:text-zinc-800'}`} 
+                                                viewBox="0 0 20 20"
+                                            >
+                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                                            </svg>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                    {/* Sentix-Prime Footer — Brand Authority + Category Rank side-by-side */}
-                    <div className="mt-6 pt-5 border-t border-white/5 grid grid-cols-2 gap-4">
-                        {/* Brand Authority Score */}
-                        <div className="flex items-center gap-3 bg-black/20 border border-primary/10 rounded-lg p-3">
-                            <div className="bg-primary/10 text-primary p-2 rounded-lg border border-primary/20 flex-shrink-0">
-                                <TrendingUp className="w-4 h-4" />
-                            </div>
-                            <div>
-                                <p className="text-[9px] text-textMuted font-mono uppercase tracking-widest">Brand Authority</p>
-                                <p className="font-mono font-black text-white" style={{ fontSize: '1.2rem' }}>
-                                    {brandScore}
-                                    <span className="text-textMuted font-normal text-sm"> / 100</span>
-                                </p>
-                            </div>
+                        <div className="flex flex-wrap gap-2 mb-12">
+                            {Object.entries(safeProduct?.specifications || {}).slice(0, 4).map(([key, val]) => (
+                                <div key={key} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl border border-zinc-200/50 dark:border-zinc-700/50 flex flex-col">
+                                    <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-tight">{key}</span>
+                                    <span className="text-xs font-black text-gray-800 dark:text-zinc-100 truncate max-w-[150px]">{val}</span>
+                                </div>
+                            ))}
                         </div>
-                        {/* Category Rank */}
-                        <div className="flex items-center gap-3 bg-black/20 border border-white/5 rounded-lg p-3">
-                            <div className="bg-white/5 text-textMuted p-2 rounded-lg border border-white/10 flex-shrink-0">
-                                <Zap className="w-4 h-4" />
-                            </div>
-                            <div>
-                                <p className="text-[9px] text-textMuted font-mono uppercase tracking-widest">Category Rank</p>
-                                <p className="font-mono font-black text-white" style={{ fontSize: '1.2rem' }}>
-                                    #{product_meta?.rank ?? 'N/A'}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+
+                        <a 
+                            href={safeProduct?.url || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full group relative inline-flex items-center justify-center px-8 py-6 font-black text-white transition-all duration-300 bg-indigo-600 rounded-[2rem] hover:bg-indigo-700 focus:outline-none shadow-[0_20px_40px_-10px_rgba(79,70,229,0.5)] active:scale-95"
+                        >
+                            <span>VIEW ON {platform.toUpperCase()} PLATFORM</span>
+                            <svg className="w-5 h-5 ml-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
+                        </a>
+                    </motion.div>
                 </div>
-
             </div>
         </div>
     );

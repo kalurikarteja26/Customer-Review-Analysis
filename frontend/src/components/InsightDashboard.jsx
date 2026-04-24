@@ -1,96 +1,139 @@
-import React, { useContext } from 'react';
-import { BrainCircuit, Loader2, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { AppContext } from '../App';
+import React from 'react';
+import ProductHero from './ProductHero';
+import AIConsensusPanel from './AIConsensusPanel';
 import LivePulseFeed from './LivePulseFeed';
-import HistoricalTrendChart from './HistoricalTrendChart';
+import RatingDistChart from './RatingDistChart';
+import SentimentPieChart from './SentimentPieChart';
+import PriceHistoryChart from './PriceHistoryChart';
+import ReviewSummary from './ReviewSummary';
 
-const InsightDashboard = () => {
-    const { analysisResult, isAnalyzing } = useContext(AppContext);
+const InsightDashboard = ({ data = {} }) => {
+    if (!data || Object.keys(data).length === 0) return null;
 
-    const getTrajectoryUI = (trajectory) => {
-        if (trajectory === 'Improving') return <span className="text-positive flex items-center gap-1"><ArrowUpRight className="w-5 h-5"/> Improving</span>;
-        if (trajectory === 'Declining') return <span className="text-negative flex items-center gap-1"><ArrowDownRight className="w-5 h-5"/> Declining</span>;
-        return <span className="text-neutral flex items-center gap-1"><Minus className="w-5 h-5"/> Stable</span>;
-    };
+    const reviews = Array.isArray(data?.reviews) ? data.reviews : [];
+    const hasReviews = reviews.length > 0;
+    const hasHistory = Array.isArray(data?.price_history) && data.price_history.length > 0;
+    const specs = data?.specifications || {};
 
     return (
-        <div className="w-full relative mt-6">
-            <AnimatePresence mode="wait">
-                {!analysisResult && !isAnalyzing && (
-                    <motion.div 
-                        key="empty"
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="bloomberg-panel p-12 text-center text-textMuted border-dashed border-2 flex flex-col items-center justify-center min-h-[400px]"
-                    >
-                        <BrainCircuit className="w-16 h-16 mb-4 opacity-20" />
-                        <p className="font-mono text-sm tracking-widest uppercase">System Standby</p>
-                        <p className="text-xs mt-2 opacity-50">Mount a stream via the Universal Ingestor to initialize data lakes.</p>
-                    </motion.div>
-                )}
+        <div className="w-full space-y-16 fade-in pb-20">
+            {/* SECTION 1: Product Overview */}
+            <section id="product-overview">
+                <div className="flex items-center gap-3 mb-6">
+                    <span className="px-3 py-1 bg-indigo-500 text-white text-[10px] font-black uppercase rounded-full shadow-[0_0_15px_rgba(99,102,241,0.5)]">Section 01</span>
+                    <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">Product Overview</h2>
+                </div>
+                <ProductHero product={data} />
+            </section>
 
-                {isAnalyzing && (
-                    <motion.div 
-                        key="loading"
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="bloomberg-panel p-12 text-center text-primary flex flex-col items-center justify-center min-h-[400px]"
-                    >
-                        <Loader2 className="w-12 h-12 mb-4 animate-spin opacity-80" />
-                        <p className="font-mono text-sm tracking-widest uppercase">Fetching Multi-Stream Intelligence...</p>
-                    </motion.div>
-                )}
+            {/* SECTION 2: AI Recommendation Verdict */}
+            {data?.recommendation && (
+                <section id="ai-recommendation">
+                    <div className="flex items-center gap-3 mb-6">
+                        <span className="px-3 py-1 bg-indigo-500 text-white text-[10px] font-black uppercase rounded-full shadow-[0_0_15px_rgba(99,102,241,0.5)]">Section 02</span>
+                        <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">AI Analysis & Verdict</h2>
+                    </div>
+                    <AIConsensusPanel 
+                        recommendation={data.recommendation} 
+                        featureScores={data?.feature_match_scores || {}} 
+                    />
+                </section>
+            )}
 
-                {analysisResult && (
-                    <motion.div 
-                        key="results"
-                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                        className="grid grid-cols-1 lg:grid-cols-3 gap-6"
-                    >
-                        {/* Zone A: Live Stream */}
-                        <div className="lg:col-span-1">
-                            <LivePulseFeed liveFeed={analysisResult.live_feed} />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+                {/* LEFT COLUMN: Analytics & Insights */}
+                <div className="lg:col-span-8 space-y-16">
+                    
+                    {/* SECTION 3: Review Analytics */}
+                    <section id="review-analytics">
+                        <div className="flex items-center gap-3 mb-6">
+                            <span className="px-3 py-1 bg-indigo-500 text-white text-[10px] font-black uppercase rounded-full shadow-[0_0_15px_rgba(99,102,241,0.5)]">Section 03</span>
+                            <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">Review Analytics</h2>
                         </div>
-
-                        {/* Zone B: Historical Trend */}
-                        <div className="lg:col-span-2">
-                            <HistoricalTrendChart 
-                                historicalTrend={analysisResult.historical_trend} 
-                                historicalAvg={analysisResult.historical_average_score} 
-                            />
-                        </div>
-
-                        {/* Zone C: Aggregate AI Summary */}
-                        <div className="lg:col-span-3 bloomberg-panel p-6 mt-2 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-                            
-                            <div className="flex items-center gap-2 mb-6 text-textMuted border-b border-white/10 pb-4">
-                                <BrainCircuit className="w-5 h-5 text-primary" />
-                                <h3 className="font-mono text-sm tracking-widest uppercase">Zone C: LLM Consensus Layer</h3>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                                <div className="col-span-1 border-r border-white/10 pr-6">
-                                    <p className="text-xs text-textMuted uppercase tracking-wider mb-2 font-mono">Current Trajectory</p>
-                                    <div className="text-2xl font-bold font-sans">
-                                        {getTrajectoryUI(analysisResult.sentiment_trajectory)}
-                                    </div>
-                                    <div className="mt-6">
-                                        <p className="text-xs text-textMuted uppercase tracking-wider mb-1 font-mono">Live Sync Score</p>
-                                        <p className="text-4xl font-black text-white">{analysisResult.current_sentiment_score} <span className="text-xl text-textMuted font-normal">/ 5.0</span></p>
-                                    </div>
+                        {hasReviews ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="h-[350px]">
+                                    <RatingDistChart distribution={data?.rating_distribution || {5:0, 4:0, 3:0, 2:0, 1:0}} />
                                 </div>
-                                <div className="col-span-1 md:col-span-3">
-                                    <h4 className="text-xs text-primary font-mono uppercase tracking-widest mb-3">Executive Summary</h4>
-                                    <p className="text-lg text-textMain/90 leading-relaxed font-sans border-l-2 border-primary/50 pl-4 py-1 italic bg-white/5 rounded-r">
-                                        "{analysisResult.aggregate_summary}"
-                                    </p>
+                                <div className="h-[350px]">
+                                    <SentimentPieChart reviews={reviews} />
                                 </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="p-8 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700 text-center">
+                                <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest">No customer review data available for analysis</p>
+                            </div>
+                        )}
+                    </section>
 
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                    {/* SECTION 4: AI Insights */}
+                    <section id="ai-insights">
+                        <div className="flex items-center gap-3 mb-6">
+                            <span className="px-3 py-1 bg-indigo-500 text-white text-[10px] font-black uppercase rounded-full shadow-[0_0_15px_rgba(99,102,241,0.5)]">Section 04</span>
+                            <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">AI Summary</h2>
+                        </div>
+                        <ReviewSummary summary={data?.sentiment_analysis || {}} />
+                    </section>
+
+                    {/* SECTION 5: Specifications */}
+                    {Object.keys(specs).length > 0 && (
+                        <section id="specifications">
+                            <div className="flex items-center gap-3 mb-6">
+                                <span className="px-3 py-1 bg-indigo-500 text-white text-[10px] font-black uppercase rounded-full shadow-[0_0_15px_rgba(99,102,241,0.5)]">Section 05</span>
+                                <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">Specifications</h2>
+                            </div>
+                            <div className="bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl rounded-3xl border border-white/20 dark:border-zinc-800/50 overflow-hidden">
+                                <table className="w-full text-left border-collapse">
+                                    <tbody>
+                                        {Object.entries(specs).map(([key, val], idx) => (
+                                            <tr key={key} className={idx % 2 === 0 ? 'bg-zinc-50/50 dark:bg-zinc-800/20' : ''}>
+                                                <td className="py-4 px-6 text-xs font-black uppercase text-zinc-400 tracking-wider w-1/3">{key}</td>
+                                                <td className="py-4 px-6 text-sm text-gray-800 dark:text-zinc-200 font-medium">{val}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    )}
+
+                    {/* SECTION 6: Price History */}
+                    <section id="price-history">
+                        <div className="flex items-center gap-3 mb-6">
+                            <span className="px-3 py-1 bg-indigo-500 text-white text-[10px] font-black uppercase rounded-full shadow-[0_0_15px_rgba(99,102,241,0.5)]">Section 06</span>
+                            <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">Price History</h2>
+                        </div>
+                        {hasHistory ? (
+                            <div className="h-[400px]">
+                                <PriceHistoryChart history={data?.price_history || []} />
+                            </div>
+                        ) : (
+                            <div className="p-8 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700 text-center">
+                                <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest">No price history available yet</p>
+                            </div>
+                        )}
+                    </section>
+                </div>
+
+                {/* RIGHT COLUMN: Review Feed */}
+                <div className="lg:col-span-4 h-[1200px] sticky top-28">
+                    <LivePulseFeed reviews={reviews} />
+                </div>
+            </div>
+
+            {/* System Status Footer */}
+            <div className="flex flex-wrap items-center justify-center gap-4 text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em] pt-10 border-t border-gray-100 dark:border-zinc-800">
+                <span className="flex h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]"></span>
+                AI Commerce Analyzer Active
+                <span className="opacity-20">|</span>
+                Core: Python 3.10
+                <span className="opacity-20">|</span>
+                Scraper: Universal Python
+                <span className="opacity-20">|</span>
+                Database: SQLite v3
+                <span className="opacity-20">|</span>
+                Status: Robust
+            </div>
         </div>
     );
 };

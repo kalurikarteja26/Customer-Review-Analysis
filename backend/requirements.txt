@@ -4,3 +4,7 @@ pydantic
 beautifulsoup4
 requests
 lxml
+google-generativeai
+python-dotenv
+textblob
+vaderSentiment
