@@ -12,7 +12,8 @@ const SentimentAnalyzer = ({ productMeta, category }) => {
         if (!reviewText) return;
         setIsLoading(true);
         try {
-            const response = await axios.post('http://127.0.0.1:5000/draft-response', {
+            const API_URL = import.meta.env.VITE_API_URL;
+            const response = await axios.post(`${API_URL}/draft-response`, {
                 review_text: reviewText,
                 sentiment: sentiment,
                 product_name: productMeta?.name || 'Product',
@@ -41,17 +42,17 @@ const SentimentAnalyzer = ({ productMeta, category }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
                     <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest">Inbound Review Text</label>
-                    <textarea 
+                    <textarea
                         className="w-full h-40 p-4 rounded-2xl bg-white/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 text-sm text-gray-800 dark:text-zinc-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                         placeholder="Paste a customer review here to generate a high-context response..."
                         value={reviewText}
                         onChange={(e) => setReviewText(e.target.value)}
                     />
-                    
+
                     <div className="flex gap-4">
                         <div className="flex-1">
                             <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Detected Sentiment</label>
-                            <select 
+                            <select
                                 className="w-full p-3 rounded-xl bg-white/50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm font-bold outline-none"
                                 value={sentiment}
                                 onChange={(e) => setSentiment(e.target.value)}
@@ -61,7 +62,7 @@ const SentimentAnalyzer = ({ productMeta, category }) => {
                                 <option value="Negative">Negative</option>
                             </select>
                         </div>
-                        <button 
+                        <button
                             onClick={handleGenerate}
                             disabled={isLoading || !reviewText}
                             className="flex-1 mt-6 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2"
@@ -76,7 +77,7 @@ const SentimentAnalyzer = ({ productMeta, category }) => {
                     <div className="w-full h-[228px] p-6 rounded-2xl bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/20 relative overflow-hidden">
                         <AnimatePresence mode="wait">
                             {draft ? (
-                                <motion.p 
+                                <motion.p
                                     key="draft"
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
@@ -85,7 +86,7 @@ const SentimentAnalyzer = ({ productMeta, category }) => {
                                     {draft}
                                 </motion.p>
                             ) : (
-                                <motion.div 
+                                <motion.div
                                     key="placeholder"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -99,7 +100,7 @@ const SentimentAnalyzer = ({ productMeta, category }) => {
                             )}
                         </AnimatePresence>
                         {draft && (
-                            <button 
+                            <button
                                 onClick={() => navigator.clipboard.writeText(draft)}
                                 className="absolute bottom-4 right-4 p-2 bg-white dark:bg-zinc-800 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-700 hover:scale-110 transition-transform"
                                 title="Copy to clipboard"
