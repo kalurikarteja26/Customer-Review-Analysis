@@ -444,7 +444,7 @@ async def product_search(req: SearchRequest, response: Response, background_task
     except Exception as e:
         import traceback
         print(f"[SEARCH ERROR] {traceback.format_exc()}")
-        return SearchResponse(status="error", query=req.query, canonical_products=[], products=[])
+        raise HTTPException(status_code=500, detail="Search failed: " + str(e))
 
 @app.get("/price-history/{product_id}")
 async def price_history_endpoint(product_id: str):

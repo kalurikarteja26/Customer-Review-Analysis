@@ -15,7 +15,7 @@ class ProductSearchEngine:
             return results or []
         except Exception as e:
             print(f"SEARCH ERROR: {e}")
-            return []
+            raise e
 
     def get_product_details(self, url: str) -> Dict[str, Any]:
         try:
