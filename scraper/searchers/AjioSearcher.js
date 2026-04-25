@@ -12,12 +12,14 @@ export class AjioSearcher extends BaseSearcher {
         const products = [];
 
         $('.item').each((i, el) => {
-            if (products.length >= 5) return;
+            if (products.length >= 20) return;
             const title = $(el).find('.name').text().trim();
             const brand = $(el).find('.brand').text().trim();
             const link = $(el).find('a').attr('href');
             const price = $(el).find('.price').text().replace(/[^0-9]/g, '');
-            const image = $(el).find('img').attr('src');
+            const imageEl = $(el).find('img');
+            const srcset = imageEl.attr('srcset');
+            const image = imageEl.attr('src') || imageEl.attr('data-src') || (srcset ? srcset.split(' ')[0] : null);
 
             if (title && link) {
                 products.push({
@@ -48,7 +50,7 @@ export class AjioSearcher extends BaseSearcher {
 
         const results = await page.evaluate(() => {
             const items = Array.from(document.querySelectorAll('.item, [data-testid="product-item"], .rilrtl-products-list__item'));
-            return items.slice(0, 5).map(el => {
+            return items.slice(0, 20).map(el => {
                 const brandEl = el.querySelector('.brand, .rilflex-ProductBrand, [data-testid="brand-name"]');
                 const nameEl = el.querySelector('.name, .nameCls, [data-testid="product-name"]');
                 const linkEl = el.querySelector('a');

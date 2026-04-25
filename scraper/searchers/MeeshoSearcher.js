@@ -12,12 +12,14 @@ export class MeeshoSearcher extends BaseSearcher {
         const products = [];
 
         $('div[class*="ProductCard"], .sc-bcXHqe').each((i, el) => {
-            if (products.length >= 5) return;
+            if (products.length >= 20) return;
             const title = $(el).find('p[class*="NewProductCardstyled__StyledName"]').text().trim() ||
                           $(el).find('p').first().text().trim();
             const link = $(el).find('a').attr('href');
             const price = $(el).find('h5').text().replace(/[^0-9]/g, '');
-            const image = $(el).find('img').attr('src');
+            const imageEl = $(el).find('img');
+            const srcset = imageEl.attr('srcset');
+            const image = imageEl.attr('src') || imageEl.attr('data-src') || (srcset ? srcset.split(' ')[0] : null);
 
             if (title && link) {
                 products.push({
@@ -55,7 +57,7 @@ export class MeeshoSearcher extends BaseSearcher {
                 if (found.length > 2) { items = found; break; }
             }
 
-            return items.slice(0, 5).map(el => {
+            return items.slice(0, 20).map(el => {
                 const titleEl = el.querySelector('p[class*="StyledName"], p[class*="name"], p');
                 const linkEl = el.querySelector('a');
                 const priceEl = el.querySelector('h5, span[class*="price"]');

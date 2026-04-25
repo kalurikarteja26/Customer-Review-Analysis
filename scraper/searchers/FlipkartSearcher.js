@@ -11,13 +11,14 @@ export class FlipkartSearcher extends BaseSearcher {
         const $ = await this.fetch(url);
         const products = [];
 
-        $('div._1AtVbE, div._2kHMtA, div._4ddWXP').each((i, el) => {
-            if (products.length >= 5) return;
-            const title = $(el).find('div._4rR01T, a.s1Q9rs, div._2Wk9S7').first().text().trim();
-            const link = $(el).find('a._1fQZEK, a.s1Q9rs, a._2rpM_f').first().attr('href');
-            const price = $(el).find('div._30jeq3').first().text().replace(/[^0-9]/g, '');
-            const rating = $(el).find('div._3LWZlK').first().text().trim();
-            const image = $(el).find('img._396cs4, img.CXW795').first().attr('src');
+        $('div._1AtVbE, div._2kHMtA, div._4ddWXP, div.cPHDOP, div.slAVV4').each((i, el) => {
+            if (products.length >= 20) return;
+            const title = $(el).find('div._4rR01T, a.s1Q9rs, div._2Wk9S7, span.B_NuCI, .VU-ZEz').first().text().trim();
+            const link = $(el).find('a._1fQZEK, a.s1Q9rs, a._2rpM_f, a.CGtC98').first().attr('href');
+            const price = $(el).find('div._30jeq3, div.Nx9bqj, div._16Jk6d').first().text().replace(/[^0-9]/g, '');
+            const rating = $(el).find('div._3LWZlK, div.XQDdHH').first().text().trim();
+            const imageEl = $(el).find('img._396cs4, img.CXW795, img._53u06y, img._2r_T1I, img.DByo4Z, img.v2V51U, img');
+            const image = imageEl.attr('src') || imageEl.attr('data-src');
 
             if (title && link) {
                 products.push({
@@ -50,23 +51,45 @@ export class FlipkartSearcher extends BaseSearcher {
             // Flipkart now wraps entire product cards in 'a' tags
             const items = Array.from(document.querySelectorAll('a[target="_blank"][rel="noopener noreferrer"], div.cPHDOP a, div.slAVV4 a')).filter(a => a.innerText.length > 30);
             
-            return items.slice(0, 5).map(linkEl => {
-                // Since the entire card is an 'a' tag, we extract from inside it
-                const titleMatch = linkEl.innerText.split('\n').find(t => t.length > 10 && !t.includes('₹') && !t.includes('Reviews') && !t.includes('Add to Compare'));
-                const priceMatch = linkEl.innerText.match(/₹([\d,]+)/);
-                const imageEl = linkEl.querySelector('img');
+            return items.slice(0, 20).map(linkEl => {
+                const titleEl = linkEl.querySelector('div._4rR01T, a.s1Q9rs, div._2Wk9S7, span.B_NuCI, .VU-ZEz, .KzDlHZ, .WKTcLC');
+                let title = titleEl ? titleEl.innerText.trim() : null;
+                if (!title) {
+                    title = linkEl.innerText.split('\n').find(t => 
+                        t.length > 10 && 
+                        !t.includes('₹') && 
+                        !t.includes('Reviews') && 
+                        !t.includes('Add to Compare') && 
+                        !t.includes('Currently unavailable') && 
+                        !t.includes('Coming Soon')
+                    );
+                }
+                
+                let priceValue = null;
+                const priceEl = linkEl.querySelector('div._30jeq3, div.Nx9bqj, div._16Jk6d');
+                if (priceEl) {
+                    priceValue = parseFloat(priceEl.innerText.replace(/[^0-9]/g, ''));
+                } else {
+                    const priceMatch = linkEl.innerText.match(/₹([\d,]+)/);
+                    if (priceMatch) priceValue = parseFloat(priceMatch[1].replace(/,/g, ''));
+                }
 
-                if (!titleMatch) return null;
+                const imageEl = linkEl.querySelector('img._396cs4, img.CXW795, img._53u06y, img._2r_T1I, img.DByo4Z, img.v2V51U, img');
+
+                if (!title) return null;
                 
                 let imgSrc = null;
                 if (imageEl) {
-                    imgSrc = imageEl.src || imageEl.getAttribute('data-src') || imageEl.getAttribute('srcset')?.split(' ')[0];
+                    imgSrc = imageEl.getAttribute('data-src') || imageEl.getAttribute('srcset')?.split(' ')[0] || imageEl.src;
+                    if (imgSrc && imgSrc.startsWith('data:image')) {
+                        imgSrc = imageEl.getAttribute('data-src') || imageEl.getAttribute('srcset')?.split(' ')[0] || null;
+                    }
                 }
 
                 return {
-                    title: titleMatch.trim(),
+                    title: title.trim(),
                     url: linkEl.href.startsWith('http') ? linkEl.href : `https://www.flipkart.com${linkEl.getAttribute('href')}`,
-                    price: priceMatch ? parseFloat(priceMatch[1].replace(/,/g, '')) : null,
+                    price: priceValue,
                     image: imgSrc,
                     source: 'flipkart'
                 };

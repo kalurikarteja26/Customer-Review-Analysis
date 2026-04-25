@@ -12,12 +12,14 @@ export class SnapdealSearcher extends BaseSearcher {
         const products = [];
 
         $('.product-tuple-listing').each((i, el) => {
-            if (products.length >= 5) return;
+            if (products.length >= 20) return;
             const title = $(el).find('.product-title').text().trim();
             const link = $(el).find('.product-tuple-image a').attr('href');
             const price = $(el).find('.product-price').text().replace(/[^0-9]/g, '');
             const rating = $(el).find('.product-rating-count').text().replace(/[^0-9.]/g, '');
-            const image = $(el).find('img.product-tuple-image').attr('src') || $(el).find('img.product-tuple-image').attr('data-src');
+            const imageEl = $(el).find('img.product-tuple-image, img.product-image, img.compareImg, source');
+            const srcset = imageEl.attr('srcset');
+            const image = imageEl.attr('src') || imageEl.attr('data-src') || (srcset ? srcset.split(' ')[0] : null) || $(el).find('input.compareImg').val();
 
             if (title && link) {
                 products.push({
@@ -48,7 +50,7 @@ export class SnapdealSearcher extends BaseSearcher {
 
         const results = await page.evaluate(() => {
             const items = Array.from(document.querySelectorAll('.product-tuple-listing'));
-            return items.slice(0, 5).map(el => {
+            return items.slice(0, 20).map(el => {
                 const titleEl = el.querySelector('.product-title');
                 const linkEl = el.querySelector('.product-tuple-image a, a.dp-widget-link');
                 const priceEl = el.querySelector('.product-price');

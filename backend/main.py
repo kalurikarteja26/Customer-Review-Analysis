@@ -197,7 +197,10 @@ async def product_search(req: SearchRequest, response: Response, background_task
         # ── ACCESSORY PHRASE FILTER ─────────────────────────────────────────
         negative_phrases = [
             "laptop bag", "laptop cover", "phone cover", "phone case",
-            "charger cable", "trolley bag", "backpack for laptop"
+            "charger cable", "trolley bag", "backpack for laptop",
+            "tempered glass", "screen protector", "shock proof case",
+            "back cover", "silicone case", "flip cover", "camera protector",
+            "compatible with", "compatible for"
         ]
         apply_phrase_filter = not any(nk in query_lower for nk in negative_phrases)
 
@@ -270,8 +273,12 @@ async def product_search(req: SearchRequest, response: Response, background_task
             # Keyword match
             if meaningful_keywords:
                 score = keyword_match_score(title, meaningful_keywords)
-                # Lower the threshold: tech products often omit generic terms like "laptop"
-                min_score = 1.0 if len(meaningful_keywords) <= 1 else 0.35
+                if len(meaningful_keywords) <= 1:
+                    min_score = 1.0
+                elif len(meaningful_keywords) == 2:
+                    min_score = 0.5
+                else:
+                    min_score = 0.75
                 if score < min_score:
                     print(f"[SKIP kw={score:.2f}] '{title[:55]}'")
                     continue
@@ -313,7 +320,21 @@ async def product_search(req: SearchRequest, response: Response, background_task
             # Extract common data from representative
             rep = g['representative']
             title = (rep.get('title') or rep.get('name') or "Unknown Product").strip()
-            image = rep.get('image') or ''
+            
+            # Extract best image from any item in group
+            image = ""
+            for it in g['items']:
+                img = it.get('image')
+                if img and isinstance(img, str):
+                    if img.startswith('https:/') and not img.startswith('https://'):
+                        img = img.replace('https:/', 'https://', 1)
+                    if img.startswith('http:/') and not img.startswith('http://'):
+                        img = img.replace('http:/', 'http://', 1)
+                    if img.startswith('//'):
+                        img = 'https:' + img
+                    if img.startswith('http') and 'pixel' not in img.lower() and not img.endswith('.gif'):
+                        image = img
+                        break
             
             for it in g['items']:
                 raw_p = it.get('price', 0)
@@ -360,7 +381,7 @@ async def product_search(req: SearchRequest, response: Response, background_task
             c_prod = CanonicalProduct(
                 id=hashlib.md5(g['norm_title'].encode()).hexdigest()[:12],
                 title=title,
-                image=f"http://127.0.0.1:5000/product-image/{hashlib.md5(g['norm_title'].encode()).hexdigest()[:12]}",
+                image=image if image else "",
                 avg_rating=avg_rating,
                 total_reviews=r_count, # Simplified
                 min_price=min_p,

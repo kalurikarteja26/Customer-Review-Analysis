@@ -13,13 +13,15 @@ export class MyntraSearcher extends BaseSearcher {
 
         const products = [];
         $('.product-base').each((i, el) => {
-            if (products.length >= 5) return;
+            if (products.length >= 20) return;
             const brand = $(el).find('.product-brand').text().trim();
             const name = $(el).find('.product-product').text().trim();
             const link = $(el).find('a').attr('href');
             const price = $(el).find('.product-discountedPrice').text().replace(/[^0-9]/g, '') ||
                           $(el).find('.product-price').text().replace(/[^0-9]/g, '');
-            const image = $(el).find('img').attr('src');
+            const imageEl = $(el).find('img');
+            const srcset = imageEl.attr('srcset');
+            const image = imageEl.attr('src') || imageEl.attr('data-src') || (srcset ? srcset.split(' ')[0] : null);
 
             if (name && link) {
                 products.push({
@@ -57,7 +59,7 @@ export class MyntraSearcher extends BaseSearcher {
 
         const results = await page.evaluate(() => {
             const items = Array.from(document.querySelectorAll('.product-base'));
-            return items.slice(0, 5).map(el => {
+            return items.slice(0, 20).map(el => {
                 const brandEl = el.querySelector('.product-brand');
                 const nameEl = el.querySelector('.product-product');
                 const linkEl = el.querySelector('a');

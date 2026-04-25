@@ -142,14 +142,14 @@ const Home = () => {
                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6 fade-in-1"
                          style={{ background: 'rgba(112,130,56,0.1)', border: '1px solid rgba(112,130,56,0.25)', color: 'var(--olive)' }}>
                         <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--olive)' }} />
-                        <span className="text-xs font-black uppercase tracking-widest">Live Market Intelligence</span>
+                        <span className="text-xs font-black uppercase tracking-widest">Live AI Sentiment Analysis</span>
                     </div>
 
                     <h1 className="font-black tracking-tight leading-tight mb-4 fade-in-1"
-                        style={{ fontSize: 'clamp(2.5rem, 6vw, 5rem)', color: 'var(--text)', fontFamily: "'Playfair Display', serif" }}>
+                        style={{ fontSize: 'clamp(2rem, 5vw, 4rem)', color: 'var(--text)', fontFamily: "'Playfair Display', serif" }}>
                         AI{' '}
-                        <span style={{ color: 'var(--olive)' }}>Shop</span>{' '}
-                        <span style={{ color: 'var(--brown)' }}>Intel</span>
+                        <span style={{ color: 'var(--olive)' }}>Customer Sentiment</span><br/>
+                        <span style={{ color: 'var(--brown)', fontSize: '0.85em' }}>Classification System</span>
                     </h1>
 
                     <p className="text-base max-w-xl mx-auto fade-in-2" style={{ color: 'var(--text-md)' }}>

@@ -13,12 +13,14 @@ export class AmazonSearcher extends BaseSearcher {
 
         const products = [];
         $('.s-result-item[data-component-type="s-search-result"]').each((i, el) => {
-            if (products.length >= 5) return;
+            if (products.length >= 20) return;
             const title = $(el).find('h2 a span').text().trim();
             const link = $(el).find('h2 a').attr('href');
             const price = $(el).find('.a-price-whole').first().text().replace(/[^0-9]/g, '');
             const rating = $(el).find('.a-icon-star-small .a-icon-alt').text().split(' ')[0];
-            const image = $(el).find('.s-image').attr('src');
+            const imageEl = $(el).find('.s-image');
+            const srcset = imageEl.attr('srcset');
+            const image = imageEl.attr('src') || imageEl.attr('data-src') || (srcset ? srcset.split(' ')[0] : null);
 
             if (title && link) {
                 products.push({
@@ -60,22 +62,17 @@ export class AmazonSearcher extends BaseSearcher {
 
         const results = await page.evaluate(() => {
             const items = Array.from(document.querySelectorAll('.s-result-item[data-component-type="s-search-result"]'));
-            return items.slice(0, 5).map(el => {
+            return items.slice(0, 20).map(el => {
                 const titleEl = el.querySelector('h2 a span');
                 const linkEl = el.querySelector('h2 a');
                 const priceEl = el.querySelector('.a-price-whole');
                 const imageEl = el.querySelector('.s-image');
                 
-                // Get high res from srcset if possible
-                let imgSrc = imageEl ? imageEl.src : null;
+                let imgSrc = null;
                 if (imageEl) {
-                    const dataSrc = imageEl.getAttribute('data-src');
-                    if (dataSrc) imgSrc = dataSrc;
-                    
-                    const srcset = imageEl.getAttribute('srcset');
-                    if (srcset) {
-                        const sets = srcset.split(',').map(s => s.trim().split(' '));
-                        if (sets.length > 0) imgSrc = sets[sets.length - 1][0]; // Take largest
+                    imgSrc = imageEl.getAttribute('data-src') || imageEl.getAttribute('srcset')?.split(' ')[0] || imageEl.src;
+                    if (imgSrc && imgSrc.startsWith('data:image')) {
+                        imgSrc = imageEl.getAttribute('data-src') || imageEl.getAttribute('srcset')?.split(' ')[0] || null;
                     }
                 }
 
