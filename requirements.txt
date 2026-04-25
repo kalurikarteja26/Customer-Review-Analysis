@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pydantic
+beautifulsoup4
+requests
+httpx
+lxml
+google-generativeai
+python-dotenv
+textblob
+vaderSentiment
