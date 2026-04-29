@@ -7,19 +7,23 @@ export class SnapdealSearcher extends BaseSearcher {
     }
 
     async search(query) {
-        const url = `https://www.snapdeal.com/search?keyword=${encodeURIComponent(query)}&sort=relevance`;
+        const url = `https://www.snapdeal.com/search?keyword=${encodeURIComponent(query)}&sort=rlvncy`;
         const $ = await this.fetch(url);
+        if (!$) return [];
         const products = [];
 
         $('.product-tuple-listing').each((i, el) => {
-            if (products.length >= 20) return;
+            if (products.length >= 10) return;
             const title = $(el).find('.product-title').text().trim();
             const link = $(el).find('.product-tuple-image a').attr('href');
             const price = $(el).find('.product-price').text().replace(/[^0-9]/g, '');
             const rating = $(el).find('.product-rating-count').text().replace(/[^0-9.]/g, '');
             const imageEl = $(el).find('img.product-tuple-image, img.product-image, img.compareImg, source');
             const srcset = imageEl.attr('srcset');
-            const image = imageEl.attr('src') || imageEl.attr('data-src') || (srcset ? srcset.split(' ')[0] : null) || $(el).find('input.compareImg').val();
+            let image = imageEl.attr('src') || imageEl.attr('data-src') || (srcset ? srcset.split(' ')[0] : null) || $(el).find('input.compareImg').val();
+            // Filter out tracker/placeholder images
+            if (image && (image.includes('pixel.gif') || image.startsWith('data:image') || image.includes('placeholder'))) image = null;
+            if (image && image.startsWith('//')) image = 'https:' + image;
 
             if (title && link) {
                 products.push({
@@ -50,7 +54,7 @@ export class SnapdealSearcher extends BaseSearcher {
 
         const results = await page.evaluate(() => {
             const items = Array.from(document.querySelectorAll('.product-tuple-listing'));
-            return items.slice(0, 20).map(el => {
+            return items.slice(0, 10).map(el => {
                 const titleEl = el.querySelector('.product-title');
                 const linkEl = el.querySelector('.product-tuple-image a, a.dp-widget-link');
                 const priceEl = el.querySelector('.product-price');

@@ -8,21 +8,29 @@ import PriceHistoryChart from './PriceHistoryChart';
 import ReviewSummary from './ReviewSummary';
 
 const SectionTag = ({ n, label }) => (
-    <div className="flex items-center gap-3 mb-6">
-        <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-white"
-              style={{ background: 'var(--olive)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        <span style={{
+            padding: '0.25rem 0.75rem', borderRadius: '100px',
+            fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase',
+            letterSpacing: '0.1em', color: '#fff', background: 'var(--accent)'
+        }}>
             {String(n).padStart(2, '0')}
         </span>
-        <h2 className="text-xl font-black uppercase tracking-tight" style={{ color: 'var(--text)' }}>
+        <h2 style={{
+            fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase',
+            letterSpacing: '-0.02em', color: 'var(--text)', margin: 0
+        }}>
             {label}
         </h2>
     </div>
 );
 
 const EmptyState = ({ text }) => (
-    <div className="p-8 text-center rounded-2xl"
-         style={{ background: 'var(--beige)', border: '1.5px dashed var(--beige-2)' }}>
-        <p className="text-sm font-bold uppercase tracking-widest" style={{ color: 'var(--text-lt)' }}>{text}</p>
+    <div style={{
+        padding: '2rem', textAlign: 'center', borderRadius: '1rem',
+        background: 'var(--bg-secondary)', border: '1.5px dashed var(--border)'
+    }}>
+        <p style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-lt)' }}>{text}</p>
     </div>
 );
 
@@ -34,7 +42,7 @@ const InsightDashboard = ({ data = {} }) => {
     const specs     = data?.specifications || {};
 
     return (
-        <div className="w-full space-y-14 pb-20 fade-in">
+        <div className="fade-in" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '3.5rem', paddingBottom: '5rem' }}>
 
             {/* 01 — Product Overview */}
             <section>
@@ -53,20 +61,24 @@ const InsightDashboard = ({ data = {} }) => {
                 </section>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                <div className="lg:col-span-8 space-y-14">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2.5rem' }} className="lg-grid-12">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3.5rem' }}>
 
                     {/* 03 — Review Analytics */}
                     <section>
                         <SectionTag n={3} label="Review Analytics" />
                         {reviews.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="h-[300px] rounded-2xl p-4"
-                                     style={{ background: 'rgba(255,255,255,0.8)', border: '1px solid var(--beige-2)' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                                <div style={{
+                                    height: '300px', borderRadius: '1rem', padding: '1rem',
+                                    background: 'var(--bg-card)', border: '1px solid var(--border)'
+                                }}>
                                     <RatingDistChart distribution={data?.rating_distribution || {5:0,4:0,3:0,2:0,1:0}} />
                                 </div>
-                                <div className="h-[300px] rounded-2xl p-4"
-                                     style={{ background: 'rgba(255,255,255,0.8)', border: '1px solid var(--beige-2)' }}>
+                                <div style={{
+                                    height: '300px', borderRadius: '1rem', padding: '1rem',
+                                    background: 'var(--bg-card)', border: '1px solid var(--border)'
+                                }}>
                                     <SentimentPieChart reviews={reviews} />
                                 </div>
                             </div>
@@ -83,17 +95,25 @@ const InsightDashboard = ({ data = {} }) => {
                     {Object.keys(specs).length > 0 && (
                         <section>
                             <SectionTag n={5} label="Specifications" />
-                            <div className="rounded-2xl overflow-hidden"
-                                 style={{ border: '1px solid var(--beige-2)', background: 'rgba(255,255,255,0.8)' }}>
-                                <table className="w-full text-left border-collapse">
+                            <div style={{
+                                borderRadius: '1rem', overflow: 'hidden',
+                                border: '1px solid var(--border)', background: 'var(--bg-card)'
+                            }}>
+                                <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
                                     <tbody>
                                         {Object.entries(specs).map(([key, val], idx) => (
                                             <tr key={key}
-                                                style={{ background: idx % 2 === 0 ? 'var(--beige)' : 'rgba(255,255,255,0.9)' }}>
-                                                <td className="py-3 px-5 text-xs font-black uppercase tracking-wider w-1/3"
-                                                    style={{ color: 'var(--text-lt)' }}>{key}</td>
-                                                <td className="py-3 px-5 text-sm font-medium"
-                                                    style={{ color: 'var(--text)' }}>{val}</td>
+                                                style={{ background: idx % 2 === 0 ? 'var(--bg-secondary)' : 'var(--bg-card)' }}>
+                                                <td style={{
+                                                    padding: '0.75rem 1.25rem', fontSize: '0.75rem',
+                                                    fontWeight: 900, textTransform: 'uppercase',
+                                                    letterSpacing: '0.08em', width: '33%',
+                                                    color: 'var(--text-lt)'
+                                                }}>{key}</td>
+                                                <td style={{
+                                                    padding: '0.75rem 1.25rem', fontSize: '0.875rem',
+                                                    fontWeight: 500, color: 'var(--text)'
+                                                }}>{val}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -106,8 +126,10 @@ const InsightDashboard = ({ data = {} }) => {
                     <section>
                         <SectionTag n={6} label="Price History" />
                         {hasHistory ? (
-                            <div className="h-[360px] rounded-2xl p-4"
-                                 style={{ background: 'rgba(255,255,255,0.8)', border: '1px solid var(--beige-2)' }}>
+                            <div style={{
+                                height: '360px', borderRadius: '1rem', padding: '1rem',
+                                background: 'var(--bg-card)', border: '1px solid var(--border)'
+                            }}>
                                 <PriceHistoryChart history={data?.price_history || []} />
                             </div>
                         ) : <EmptyState text="No price history yet — check back after more searches" />}
@@ -115,16 +137,20 @@ const InsightDashboard = ({ data = {} }) => {
                 </div>
 
                 {/* RIGHT — Live Reviews */}
-                <div className="lg:col-span-4 lg:sticky lg:top-24 h-[900px]">
+                <div style={{ height: '900px' }}>
                     <LivePulseFeed reviews={reviews} />
                 </div>
             </div>
 
             {/* Footer */}
-            <div className="flex flex-wrap items-center justify-center gap-4 pt-10 text-[10px] font-bold uppercase tracking-widest"
-                 style={{ color: 'var(--text-lt)', borderTop: '1px solid var(--beige-2)' }}>
-                <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--olive)' }} />
-                AI Commerce Analyzer · Python 3.10 · SQLite v3 · Gemini Pro
+            <div style={{
+                display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center',
+                gap: '1rem', paddingTop: '2.5rem',
+                fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.15em',
+                color: 'var(--text-lt)', borderTop: '1px solid var(--border)'
+            }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent)', animation: 'pulseGlow 2s infinite' }} />
+                Sentix-Prime · AI Commerce Intelligence · Gemini 2.0 Flash
             </div>
         </div>
     );

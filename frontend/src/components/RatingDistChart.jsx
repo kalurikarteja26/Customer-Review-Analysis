@@ -96,7 +96,7 @@ const RatingDistChart = ({ distribution }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm h-full">
+    <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '1rem', border: '1px solid var(--border)', height: '100%' }}>
       <Bar data={data} options={options} />
     </div>
   );

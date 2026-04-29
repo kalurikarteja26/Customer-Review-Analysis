@@ -1,18 +1,18 @@
 import React from 'react';
 
 const VERDICT_STYLE = {
-    'BUY':             { bg: 'var(--olive)',    ring: 'rgba(112,130,56,0.25)' },
-    'CONSIDER':        { bg: '#c47a00',         ring: 'rgba(196,122,0,0.25)' },
-    'NOT RECOMMENDED': { bg: '#cc3300',         ring: 'rgba(204,51,0,0.25)' },
+    'BUY':             { bg: 'var(--positive)', ring: 'var(--accent-glow)' },
+    'CONSIDER':        { bg: 'var(--neutral)',  ring: 'rgba(245,158,11,0.25)' },
+    'NOT RECOMMENDED': { bg: 'var(--negative)', ring: 'rgba(239,68,68,0.25)' },
 };
 
 const AIConsensusPanel = ({ recommendation = {}, featureScores = {} }) => {
     const { verdict, score, badges, insights } = recommendation;
-    const vs = VERDICT_STYLE[verdict] || { bg: 'var(--brown)', ring: 'rgba(161,134,111,0.25)' };
+    const vs = VERDICT_STYLE[verdict] || { bg: 'var(--text-md)', ring: 'var(--shadow)' };
 
     return (
         <div className="rounded-3xl p-8 md:p-10"
-             style={{ background: 'rgba(255,255,255,0.85)', border: '1.5px solid var(--beige-2)', boxShadow: '0 4px 24px rgba(120,90,60,0.08)' }}>
+             style={{ background: 'var(--bg-card)', border: '1.5px solid var(--border)', boxShadow: '0 4px 24px var(--shadow)', transition: 'all 0.4s ease' }}>
             <div className="flex flex-col md:flex-row gap-10">
 
                 {/* ── VERDICT CIRCLE ── */}

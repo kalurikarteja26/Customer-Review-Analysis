@@ -3,8 +3,17 @@ import React from 'react';
 const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000';
 
 const proxyImage = (url) => {
-    if (!url || url.startsWith('/') || url.startsWith('data:')) return url || '';
+    if (!url || typeof url !== 'string') return '';
+    // Filter out known bad image patterns
+    if (url.startsWith('data:image')) return '';
+    if (url.includes('pixel.gif') || url.includes('placeholder') || url.endsWith('.svg')) return '';
+    if (url.length < 10) return '';
+    // Fix protocol-relative URLs
+    if (url.startsWith('//')) url = 'https:' + url;
+    // Local/static paths
+    if (url.startsWith('/')) return `${API_BASE}${url}`;
     if (url.includes('127.0.0.1') || url.includes('localhost') || url.includes('/product-image/')) return url;
+    // Proxy everything else to avoid CORS
     return `${API_BASE}/image-proxy?url=${encodeURIComponent(url)}`;
 };
 
@@ -50,15 +59,16 @@ const DiscoveryResults = ({ results = [], closeMatches = [], totalResults, onSel
     }
 
     const ProductCard = ({ product, isClose, idx, onSelect }) => {
+        const [imgError, setImgError] = React.useState(false);
         const [expanded, setExpanded] = React.useState(false);
         const imgSrc = proxyImage(product?.image);
-        const hasImage = Boolean(imgSrc);
+        const hasImage = Boolean(imgSrc) && !imgError;
         const variants = product.variants || [];
         const bestDiscount = Math.max(...variants.map(v => v.discount_percentage || 0));
 
         return (
             <div
-                className={`product-card flex flex-col relative transition-all duration-300 ${expanded ? 'shadow-2xl z-20 scale-[1.02]' : ''} ${product.is_best_product ? 'border-2 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.3)]' : ''}`}
+                className={`product-card flex flex-col relative transition-all duration-300 ${product.is_best_product ? 'border-2 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.3)]' : ''}`}
                 style={{ animationDelay: `${idx * 0.05}s` }}
             >
                 {product.is_best_product && (
@@ -77,22 +87,20 @@ const DiscoveryResults = ({ results = [], closeMatches = [], totalResults, onSel
                             alt={product?.title || 'Product'}
                             className="w-full h-full object-cover transition-all duration-700 opacity-0 group-hover:scale-105"
                             onLoad={e => e.target.classList.add('opacity-100')}
-                            onError={e => { 
-                                e.target.style.display = 'none';
-                                e.target.nextSibling.style.display = 'flex';
-                            }}
+                            onError={() => setImgError(true)}
                             referrerPolicy="no-referrer"
                         />
                     ) : null}
                     
-                    {/* Placeholder */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2"
-                         style={{ display: hasImage ? 'none' : 'flex' }}>
-                        <svg className="w-10 h-10" style={{ color: 'var(--brown)', opacity: 0.4 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-lt)' }}>No Intel Image</span>
-                    </div>
+                    {/* Placeholder — shown when no image or image failed */}
+                    {!hasImage && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                            <svg className="w-10 h-10" style={{ color: 'var(--brown)', opacity: 0.4 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-lt)' }}>No Image</span>
+                        </div>
+                    )}
 
                     {/* Discount badge */}
                     {bestDiscount > 0 && (
@@ -107,8 +115,8 @@ const DiscoveryResults = ({ results = [], closeMatches = [], totalResults, onSel
                 <div className="p-5 flex flex-col flex-1 bg-white relative">
                     <div className="flex items-center justify-between mb-3 cursor-pointer" onClick={() => onSelect && onSelect(variants[0])}>
                         <div className="flex gap-1">
-                            {variants.slice(0, 3).map(v => (
-                                <span key={v.platform} className={pillClass(v.platform)} style={{ padding: '0.15rem 0.4rem', fontSize: '0.55rem' }}>
+                            {variants.slice(0, 3).map((v, vi) => (
+                                <span key={`${v.platform}-${vi}`} className={pillClass(v.platform)} style={{ padding: '0.15rem 0.4rem', fontSize: '0.55rem' }}>
                                     {v.platform[0]}
                                 </span>
                             ))}

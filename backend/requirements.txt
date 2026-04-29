@@ -4,8 +4,12 @@ pydantic
 beautifulsoup4
 requests
 lxml
-google-generativeai
+google-genai
 python-dotenv
 textblob
 vaderSentiment
 httpx
+cachetools
+prometheus-client
+celery
+redis

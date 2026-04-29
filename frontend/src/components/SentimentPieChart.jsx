@@ -72,8 +72,8 @@ const SentimentPieChart = ({ reviews = [] }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm h-full flex items-center justify-center">
-      <div className="w-full max-w-[300px] h-[300px]">
+    <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '1rem', border: '1px solid var(--border)', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: '100%', maxWidth: '300px', height: '300px' }}>
         <Pie data={data} options={options} />
       </div>
     </div>

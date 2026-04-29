@@ -48,8 +48,6 @@ const Home = () => {
         setDiscoveryData([]);
         setHasSearched(true);
         setLastQuery(query);
-        
-        // Apply pre-selected platforms to the filter panel
         setFilters(prev => ({ ...prev, platforms: selectedPlatforms }));
 
         try {
@@ -79,24 +77,18 @@ const Home = () => {
         discoveryData.forEach(p => {
             const variants = p.variants || [];
             const title = (p.title || '').toLowerCase();
-            
-            // Criteria scores
             let score = 0;
-            const totalCriteria = 4; // Platform, Price, Discount, Brand
+            const totalCriteria = 4;
 
-            // 1. Platform
             const hasPlatformMatch = filters.platforms.length === 0 || 
                                      variants.some(v => filters.platforms.includes(v.platform.toLowerCase()));
             if (hasPlatformMatch) score++;
 
-            // 2. Price
             const minP = p.min_price || 0;
             const maxP = p.max_price || 0;
             let hasPriceMatch = true;
             if (filters.minPrice && maxP < parseFloat(filters.minPrice)) hasPriceMatch = false;
             if (filters.maxPrice && minP > parseFloat(filters.maxPrice)) hasPriceMatch = false;
-            
-            // "Close" price check (within 20%)
             const isClosePrice = !hasPriceMatch && (
                 (!filters.minPrice || maxP >= parseFloat(filters.minPrice) * 0.8) &&
                 (!filters.maxPrice || minP <= parseFloat(filters.maxPrice) * 1.2)
@@ -104,17 +96,13 @@ const Home = () => {
             if (hasPriceMatch) score++;
             else if (isClosePrice) score += 0.5;
 
-            // 3. Discount
             const maxDiscount = Math.max(...variants.map(v => v.discount_percentage || 0));
             let hasDiscountMatch = true;
             if (filters.minDiscount > 0 && maxDiscount < Number(filters.minDiscount)) hasDiscountMatch = false;
-            
-            // "Close" discount check (within 10% of target)
             const isCloseDiscount = !hasDiscountMatch && maxDiscount >= (Number(filters.minDiscount) - 10);
             if (hasDiscountMatch) score++;
             else if (isCloseDiscount) score += 0.5;
 
-            // 4. Brand
             const hasBrandMatch = !filters.brand || title.includes(filters.brand.toLowerCase());
             if (hasBrandMatch) score++;
 
@@ -123,65 +111,83 @@ const Home = () => {
             else if (score >= 2.5) results.close.push(finalProduct);
         });
 
-        const finalResults = { perfect: results.perfect, close: results.close };
-        return finalResults;
+        return results;
     }, [discoveryData, filters]);
 
+    const availablePlatforms = useMemo(() => {
+        const platforms = new Set();
+        discoveryData.forEach(p => {
+            p.variants?.forEach(v => {
+                if (v.platform) platforms.add(v.platform.toLowerCase());
+            });
+        });
+        return Array.from(platforms);
+    }, [discoveryData]);
+
     return (
-        <div className="relative min-h-screen" style={{ background: 'var(--cream)' }}>
-            {/* ── BACKGROUND LAYER ── */}
+        <div style={{ position: 'relative', minHeight: '100vh', background: 'var(--bg-primary)', transition: 'background 0.4s ease' }}>
+            {/* ── BACKGROUND ── */}
             <div className="app-bg" />
             <div className="blob blob-1" ref={blobRef} />
             <div className="blob blob-2" />
             <div className="blob blob-3" />
 
-            <div className="relative z-10 max-w-6xl mx-auto px-4 pt-16 pb-24">
+            <div style={{ position: 'relative', zIndex: 10, maxWidth: '72rem', margin: '0 auto', padding: '5rem 1rem 6rem' }}>
 
                 {/* ── HERO ── */}
-                <div className="text-center mb-12 fade-in">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6 fade-in-1"
-                         style={{ background: 'rgba(112,130,56,0.1)', border: '1px solid rgba(112,130,56,0.25)', color: 'var(--olive)' }}>
-                        <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--olive)' }} />
-                        <span className="text-xs font-black uppercase tracking-widest">Live AI Sentiment Analysis</span>
+                <div className="fade-in" style={{ textAlign: 'center', marginBottom: '3rem' }}>
+                    <div className="fade-in-1" style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                        padding: '0.5rem 1rem', borderRadius: '100px', marginBottom: '1.5rem',
+                        background: 'var(--accent-bg)', border: '1px solid var(--accent-glow)', color: 'var(--accent)'
+                    }}>
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent)', animation: 'pulseGlow 2s infinite' }} />
+                        <span style={{ fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
+                            Live AI Sentiment Analysis
+                        </span>
                     </div>
 
-                    <h1 className="font-black tracking-tight leading-tight mb-4 fade-in-1"
-                        style={{ fontSize: 'clamp(2rem, 5vw, 4rem)', color: 'var(--text)', fontFamily: "'Playfair Display', serif" }}>
+                    <h1 className="fade-in-1" style={{
+                        fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: '1rem',
+                        fontSize: 'clamp(2rem, 5vw, 3.5rem)', color: 'var(--text)',
+                        fontFamily: "'Playfair Display', serif"
+                    }}>
                         AI{' '}
-                        <span style={{ color: 'var(--olive)' }}>Customer Sentiment</span><br/>
-                        <span style={{ color: 'var(--brown)', fontSize: '0.85em' }}>Classification System</span>
+                        <span style={{ color: 'var(--accent)' }}>Customer Sentiment</span><br/>
+                        <span style={{ color: 'var(--text-md)', fontSize: '0.85em' }}>Classification System</span>
                     </h1>
 
-                    <p className="text-base max-w-xl mx-auto fade-in-2" style={{ color: 'var(--text-md)' }}>
+                    <p className="fade-in-2" style={{ fontSize: '1rem', maxWidth: '36rem', margin: '0 auto', color: 'var(--text-md)' }}>
                         Search <strong>any product</strong> across Amazon, Flipkart, Myntra, Ajio, Snapdeal &amp; Meesho —
                         get AI sentiment, price history, and smart recommendations.
                     </p>
                 </div>
 
                 {/* ── SEARCH ── */}
-                <div className="mb-6 fade-in-2">
+                <div className="fade-in-2" style={{ marginBottom: '1.5rem' }}>
                     <ProductIngestor onSearch={handleSearch} isLoading={isLoading} />
                 </div>
 
                 {/* ── EXAMPLE CHIPS ── */}
                 {!hasSearched && (
-                    <div className="text-center mb-12 fade-in-3">
-                        <p className="text-xs font-black uppercase tracking-widest mb-3" style={{ color: 'var(--text-lt)' }}>
+                    <div className="fade-in-3" style={{ textAlign: 'center', marginBottom: '3rem' }}>
+                        <p style={{ fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '0.75rem', color: 'var(--text-lt)' }}>
                             Try searching for
                         </p>
-                        <div className="flex flex-wrap justify-center gap-2">
+                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.5rem' }}>
                             {EXAMPLE_QUERIES.map(q => (
                                 <button
                                     key={q}
                                     onClick={() => handleSearch(q)}
-                                    className="px-4 py-2 rounded-full text-xs font-semibold transition-all duration-200"
                                     style={{
-                                        background: 'rgba(255,255,255,0.7)',
-                                        border: '1px solid var(--beige-2)',
-                                        color: 'var(--text-md)',
+                                        padding: '0.5rem 1rem', borderRadius: '100px',
+                                        fontSize: '0.75rem', fontWeight: 600,
+                                        background: 'var(--bg-card)', border: '1px solid var(--border)',
+                                        color: 'var(--text-md)', cursor: 'pointer',
+                                        transition: 'all 0.2s ease'
                                     }}
-                                    onMouseEnter={e => { e.target.style.borderColor = 'var(--olive)'; e.target.style.color = 'var(--olive)'; }}
-                                    onMouseLeave={e => { e.target.style.borderColor = 'var(--beige-2)'; e.target.style.color = 'var(--text-md)'; }}
+                                    onMouseEnter={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.color = 'var(--accent)'; }}
+                                    onMouseLeave={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.color = 'var(--text-md)'; }}
                                 >
                                     {q}
                                 </button>
@@ -190,17 +196,20 @@ const Home = () => {
                     </div>
                 )}
 
-                {/* ── FILTER PANEL ── */}
                 {hasSearched && !productData && (
-                    <div className="mb-8 fade-in">
-                        <FilterPanel filters={filters} onChange={setFilters} />
+                    <div className="fade-in" style={{ marginBottom: '2rem' }}>
+                        <FilterPanel filters={filters} onChange={setFilters} availablePlatforms={availablePlatforms} />
                     </div>
                 )}
 
-                {/* ── CONTENT ── */}
+                {/* ── LOADING ── */}
                 {isLoading && (
-                    <div className="mt-8">
-                        <p className="text-center text-[10px] font-black uppercase tracking-widest mb-6 fade-in" style={{ color: 'var(--olive)' }}>
+                    <div style={{ marginTop: '2rem' }}>
+                        <p className="fade-in" style={{
+                            textAlign: 'center', fontSize: '0.65rem', fontWeight: 900,
+                            textTransform: 'uppercase', letterSpacing: '0.15em',
+                            marginBottom: '1.5rem', color: 'var(--accent)'
+                        }}>
                             🛒 Crawling 6 platforms for "{lastQuery}"…
                         </p>
                         <GridSkeletonLoader />
@@ -208,8 +217,12 @@ const Home = () => {
                 )}
 
                 {isDetailLoading && (
-                    <div className="mt-8">
-                        <p className="text-center text-[10px] font-black uppercase tracking-widest mb-6 fade-in" style={{ color: 'var(--olive)' }}>
+                    <div style={{ marginTop: '2rem' }}>
+                        <p className="fade-in" style={{
+                            textAlign: 'center', fontSize: '0.65rem', fontWeight: 900,
+                            textTransform: 'uppercase', letterSpacing: '0.15em',
+                            marginBottom: '1.5rem', color: 'var(--accent)'
+                        }}>
                             🔍 Running AI Deep Dive Analysis…
                         </p>
                         <SkeletonLoader />
@@ -219,13 +232,20 @@ const Home = () => {
                 {!isLoading && !isDetailLoading && error && <ErrorMessage message={error} />}
 
                 {!isLoading && !isDetailLoading && productData && !error && (
-                    <div className="mb-20 fade-in">
+                    <div className="fade-in" style={{ marginBottom: '5rem' }}>
                         <button
                             onClick={() => setProductData(null)}
-                            className="flex items-center gap-2 mb-8 px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all"
-                            style={{ background: 'rgba(255,255,255,0.8)', border: '1px solid var(--beige-2)', color: 'var(--text-md)' }}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                marginBottom: '2rem', padding: '0.625rem 1.25rem',
+                                borderRadius: '100px', fontSize: '0.7rem', fontWeight: 900,
+                                textTransform: 'uppercase', letterSpacing: '0.1em',
+                                background: 'var(--bg-card)', border: '1px solid var(--border)',
+                                color: 'var(--text-md)', cursor: 'pointer',
+                                transition: 'all 0.2s ease'
+                            }}
                         >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                             </svg>
                             Back to Results
@@ -244,17 +264,20 @@ const Home = () => {
                 )}
 
                 {!isLoading && !isDetailLoading && !productData && !hasSearched && !error && (
-                    <div className="text-center py-20 fade-in-3">
-                        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-5"
-                             style={{ background: 'rgba(112,130,56,0.1)', border: '2px solid rgba(112,130,56,0.2)' }}>
-                            <svg className="w-10 h-10" style={{ color: 'var(--olive)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="fade-in-3" style={{ textAlign: 'center', padding: '5rem 0' }}>
+                        <div style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: '5rem', height: '5rem', borderRadius: '50%', marginBottom: '1.25rem',
+                            background: 'var(--accent-bg)', border: '2px solid var(--accent-glow)'
+                        }}>
+                            <svg width="40" height="40" style={{ color: 'var(--accent)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                         </div>
-                        <p className="font-black text-sm uppercase tracking-widest mb-2" style={{ color: 'var(--text-md)' }}>
+                        <p style={{ fontWeight: 900, fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem', color: 'var(--text-md)' }}>
                             Search Anything
                         </p>
-                        <p className="text-sm max-w-sm mx-auto" style={{ color: 'var(--text-lt)' }}>
+                        <p style={{ fontSize: '0.875rem', maxWidth: '24rem', margin: '0 auto', color: 'var(--text-lt)' }}>
                             Type any product, brand, or category above. We'll crawl 6 major e-commerce platforms instantly.
                         </p>
                     </div>

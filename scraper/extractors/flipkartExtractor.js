@@ -50,14 +50,16 @@ export class FlipkartExtractor extends BaseExtractor {
 
         // ── Reviews ───────────────────────────────────────────────────────
         const reviews = [];
-        const reviewSelectors = ['div._27M-vq', 'div.col._2wzgFH', 'div.gqVXv1', 'div.t-ZTKy'];
+        const reviewSelectors = ['div._27M-vq', 'div.col._2wzgFH', 'div.gqVXv1', 'div.t-ZTKy', 'div.ZmyHeo', 'div.row._3f4bJG'];
 
         for (const sel of reviewSelectors) {
             this.$(sel).each((i, el) => {
                 if (reviews.length >= 20) return;
-                const author = this.$(el).find('p._2sc7ZR, ._2NsDsF').first().text().trim() || 'Flipkart Customer';
+                const author = this.$(el).find('p._2sc7ZR, ._2NsDsF, .row .col ._2NsDsF').first().text().trim() || 'Flipkart Customer';
                 const rating = this.$(el).find('div._3LWZlK, .XQDdHH').first().text().trim() || '0';
-                const text = this.$(el).find('div.t-ZTKy div div, .vMCK2k').first().text().trim();
+                const titleText = this.$(el).find('p._2-N8zT').first().text().trim();
+                const bodyText = this.$(el).find('div.t-ZTKy div div, .vMCK2k, div.ZmyHeo').first().text().trim();
+                const text = bodyText || titleText;
                 const date = this.$(el).find('p._2sc7ZR').last().text().trim();
                 if (text && text.length > 5) {
                     reviews.push({ author, rating, text, date });

@@ -18,7 +18,7 @@ const inputStyle = {
     outline: 'none',
 };
 
-const FilterPanel = ({ filters, onChange }) => {
+const FilterPanel = ({ filters, onChange, availablePlatforms = [] }) => {
     const [open, setOpen] = useState(false);
     const { platforms, minPrice, maxPrice, minDiscount, brand } = filters;
     const hasActive = platforms.length > 0 || minPrice || maxPrice || minDiscount || brand;
@@ -65,7 +65,7 @@ const FilterPanel = ({ filters, onChange }) => {
                                     borderColor: platforms.length === 0 ? 'var(--olive)' : 'var(--beige-2)',
                                 }}
                             >All</button>
-                            {PLATFORMS.map(p => {
+                            {PLATFORMS.filter(p => availablePlatforms.includes(p.toLowerCase())).map(p => {
                                 const isActive = platforms.includes(p.toLowerCase());
                                 const color = PLATFORM_COLORS[p.toLowerCase()];
                                 return (

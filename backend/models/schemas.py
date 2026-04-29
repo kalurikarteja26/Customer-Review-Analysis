@@ -10,6 +10,7 @@ class Review(BaseModel):
     sentiment_score: Optional[float] = 0.0
     sentiment_label: Optional[str] = "neutral"
     fake_probability: Optional[float] = 0.0
+    is_synthetic: Optional[bool] = False
 
 class Recommendation(BaseModel):
     verdict: Optional[str] = "CONSIDER"
@@ -43,13 +44,13 @@ class Product(BaseModel):
     is_best_product: Optional[bool] = False
 
 class PlatformVariant(BaseModel):
-    platform: str
-    price: Union[str, float, int]
+    platform: Optional[str] = "Unknown"
+    price: Optional[Union[str, float, int]] = "N/A"
     original_price: Optional[Union[str, float, int]] = "N/A"
-    discount_percentage: int = 0
-    url: str
-    rating: float = 0.0
-    review_count: int = 0
+    discount_percentage: Optional[int] = 0
+    url: Optional[str] = ""
+    rating: Optional[float] = 0.0
+    review_count: Optional[int] = 0
 
 class CanonicalProduct(BaseModel):
     id: str

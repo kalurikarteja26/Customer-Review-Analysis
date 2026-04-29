@@ -1,0 +1,44 @@
+{
+  "title": "Sentix-Prime Dashboard",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Total API Requests",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(api_requests_total)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "API Request Rate (per minute)",
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(api_requests_total[1m]) * 60",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "API Latency (95th Percentile)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(api_request_latency_seconds_bucket[5m])) by (le))",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 36,
+  "refresh": "5s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  }
+}

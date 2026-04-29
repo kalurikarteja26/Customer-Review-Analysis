@@ -1,119 +1,81 @@
-import subprocess
+"""
+Async scraper service bridge — calls the Node.js scraper as a subprocess.
+Uses asyncio.create_subprocess_exec so the FastAPI event loop is NEVER blocked.
+"""
+import asyncio
 import json
 import os
+import httpx
 from fastapi import HTTPException
+from backend.services.logger import logger, Timer
 
-# Absolute path setup
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SCRAPER_SCRIPT = os.path.join(BASE_DIR, "scraper", "index.js")
+SCRAPER_URL = os.getenv("SCRAPER_URL", "http://localhost:3000")
 
-
-def run_node_scraper(url: str) -> dict:
-    try:
-        print(f"\n[DEBUG] Incoming URL: {url}")
-
-        # Run Node scraper with safe encoding
-        result = subprocess.run(
-            ["node", SCRAPER_SCRIPT, url],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",      # ✅ Fix Windows decode errors
-            errors="ignore",       # ✅ Ignore invalid characters
-            timeout=120,
-            cwd=os.path.join(BASE_DIR, "scraper")
-        )
-
-        stdout = result.stdout or ""
-        stderr = result.stderr or ""
-
-        print(f"[DEBUG] Return Code: {result.returncode}")
-
-        # ❌ If Node process failed
-        if result.returncode != 0:
-            error_message = stderr.strip()
-
-            if "Product not found" in error_message:
+async def run_node_scraper(url: str) -> dict:
+    """Deep-dive: fetch full product data for a single URL via Microservice."""
+    logger.info(f"SCRAPE url={url[:80]}")
+    with Timer() as t:
+        try:
+            async with httpx.AsyncClient(timeout=45.0) as client:
+                res = await client.post(f"{SCRAPER_URL}/process", json={"url": url})
+            
+            if res.status_code == 404:
                 raise HTTPException(status_code=404, detail="Product not found.")
-            elif "Network failure" in error_message:
-                raise HTTPException(status_code=503, detail="Network failure. Please try again.")
-            elif "Unsupported website" in error_message:
-                raise HTTPException(status_code=400, detail="This website is not supported yet.")
-            else:
-                raise HTTPException(status_code=500, detail=f"Scraper error: {error_message}")
+            elif res.status_code == 400:
+                error_data = res.json()
+                raise HTTPException(status_code=400, detail=error_data.get("error", "Bad request"))
+            elif res.status_code != 200:
+                raise HTTPException(status_code=500, detail=f"Scraper error: {res.text[:300]}")
+            
+            data = res.json()
+        except httpx.TimeoutException:
+            raise HTTPException(status_code=504, detail="Scraper timed out after 45s")
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
-        # ❌ Empty response check (SAFE VERSION)
-        if not stdout.strip():
-            raise HTTPException(status_code=500, detail="Scraper returned empty response.")
+    if not data:
+        raise HTTPException(status_code=500, detail="Scraper returned empty response.")
 
-        # ✅ Parse JSON safely
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=500, detail="Invalid scraper response format.")
+
+    logger.info(f"SCRAPE OK url={url[:60]} duration={t.ms:.0f}ms reviews={len(data.get('reviews', []))}")
+    return {
+        "title":          data.get("title") or "Unknown Product",
+        "price":          data.get("price"),
+        "original_price": data.get("original_price"),
+        "discount":       data.get("discount"),
+        "rating":         data.get("rating"),
+        "image":          data.get("image"),
+        "images":         data.get("images", []),
+        "category":       data.get("category") or [],
+        "stock":          data.get("stock", "In Stock"),
+        "source":         data.get("source") or "Unknown",
+        "reviews":        data.get("reviews") or [],
+        "specifications": data.get("specifications") or {},
+    }
+
+
+async def run_node_search(query: str) -> list:
+    """Multi-platform search — returns list of raw product dicts via Microservice."""
+    logger.info(f"SEARCH query={query!r}")
+    with Timer() as t:
         try:
-            data = json.loads(stdout.strip())
-        except json.JSONDecodeError:
-            raise HTTPException(status_code=500, detail="Invalid JSON returned from scraper.")
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                res = await client.get(f"{SCRAPER_URL}/search", params={"q": query})
+            
+            if res.status_code != 200:
+                raise HTTPException(status_code=500, detail=f"Scraper search error: {res.text[:300]}")
+            
+            results = res.json()
+        except httpx.TimeoutException:
+            raise HTTPException(status_code=504, detail="Search timed out after 60s")
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
-        # ❌ Ensure valid format
-        if not isinstance(data, dict):
-            raise HTTPException(status_code=500, detail="Invalid scraper response format.")
-
-        # ⚠️ Soft validation (DO NOT BLOCK)
-        if not data.get("title"):
-            print("[WARNING] Missing title, returning partial data instead of failing")
-
-        # ✅ FINAL CLEAN RESPONSE
-        return {
-            "title": data.get("title") or "Unknown Product",
-            "price": data.get("price"),
-            "original_price": data.get("original_price"),
-            "discount": data.get("discount"),
-            "rating": data.get("rating"),
-            "image": data.get("image"),
-            "category": data.get("category") or [],
-            "stock": data.get("stock", False),
-            "source": data.get("source") or "Unknown",
-            "reviews": data.get("reviews") or []
-        }
-
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="Scraping process timed out (120s limit).")
-
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="Search process timed out (120s limit).")
-    except Exception as e:
-        if isinstance(e, HTTPException):
-            raise e
-        raise HTTPException(status_code=500, detail=str(e))
-
-def run_node_search(query: str) -> list:
-    try:
-        print(f"\n[DEBUG] Incoming Search Query: {query}")
-
-        result = subprocess.run(
-            ["node", SCRAPER_SCRIPT, "--search", query],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="ignore",
-            timeout=120,
-            cwd=os.path.join(BASE_DIR, "scraper")
-        )
-
-        stdout = result.stdout or ""
-        stderr = result.stderr or ""
-
-        if result.returncode != 0:
-            raise HTTPException(status_code=500, detail=f"Search error: {stderr.strip()}")
-
-        if not stdout.strip():
-            return []
-
-        try:
-            data = json.loads(stdout.strip())
-        except json.JSONDecodeError:
-            raise HTTPException(status_code=500, detail="Invalid JSON returned from search.")
-
-        return data if isinstance(data, list) else []
-
-    except Exception as e:
-        if isinstance(e, HTTPException):
-            raise e
-        raise HTTPException(status_code=500, detail=str(e))
+    logger.info(f"SEARCH OK query={query!r} results={len(results)} duration={t.ms:.0f}ms")
+    return results

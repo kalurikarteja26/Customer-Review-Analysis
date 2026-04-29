@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000';
 const proxyImage = (url) => {
-    if (!url || url.startsWith('/') || url.startsWith('data:')) return url || '';
+    if (!url || url.startsWith('data:')) return url || '';
+    if (url.startsWith('/')) return `${API_BASE}${url}`;
     if (url.includes('127.0.0.1') || url.includes('localhost') || url.includes('/product-image/')) return url;
     return `${API_BASE}/image-proxy?url=${encodeURIComponent(url)}`;
 };

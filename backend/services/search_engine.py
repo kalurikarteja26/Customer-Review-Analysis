@@ -1,25 +1,31 @@
+"""
+ProductSearchEngine — thin async wrapper around the Node.js scraper bridge.
+Cache is managed upstream in main.py.
+"""
 from backend.services.scraper_service import run_node_search, run_node_scraper
-import concurrent.futures
+from backend.services.logger import logger
 from typing import List, Dict, Any
+
 
 class ProductSearchEngine:
     def __init__(self):
-        print("DEBUG: Search Engine Initialized with Node.js Scraper Bridge + SQLite Cache")
+        logger.info("Search Engine initialised (Node.js async bridge + SQLite cache)")
 
-    def search_all(self, query: str, platforms: List[str] = None) -> List[Dict[str, Any]]:
-        # ── LIVE SCRAPE ONLY (Cache handled by main.py now) ────────────────
-        print(f"DEBUG: Live scraping for '{query}'")
+    async def search_all(self, query: str) -> List[Dict[str, Any]]:
+        """Run multi-platform search. Returns raw product list."""
+        logger.info(f"Live scraping query={query!r}")
         try:
-            results = run_node_search(query)
-            print(f"DEBUG: Scraper returned {len(results) if results else 0} total items")
+            results = await run_node_search(query)
+            logger.info(f"Scraper returned {len(results)} items for query={query!r}")
             return results or []
         except Exception as e:
-            print(f"SEARCH ERROR: {e}")
-            raise e
+            logger.error(f"Search failed: {e}")
+            raise
 
-    def get_product_details(self, url: str) -> Dict[str, Any]:
+    async def get_product_details(self, url: str) -> Dict[str, Any]:
+        """Deep-dive product analysis for a single URL."""
         try:
-            return run_node_scraper(url)
+            return await run_node_scraper(url)
         except Exception as e:
-            print(f"SCRAPE ERROR: {e}")
+            logger.error(f"Product detail scrape failed url={url[:60]}: {e}")
             return None

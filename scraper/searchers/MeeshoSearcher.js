@@ -9,17 +9,20 @@ export class MeeshoSearcher extends BaseSearcher {
     async search(query) {
         const url = `https://www.meesho.com/search?q=${encodeURIComponent(query)}`;
         const $ = await this.fetch(url);
+        if (!$) return [];
         const products = [];
 
         $('div[class*="ProductCard"], .sc-bcXHqe').each((i, el) => {
-            if (products.length >= 20) return;
+            if (products.length >= 10) return;
             const title = $(el).find('p[class*="NewProductCardstyled__StyledName"]').text().trim() ||
                           $(el).find('p').first().text().trim();
             const link = $(el).find('a').attr('href');
             const price = $(el).find('h5').text().replace(/[^0-9]/g, '');
             const imageEl = $(el).find('img');
             const srcset = imageEl.attr('srcset');
-            const image = imageEl.attr('src') || imageEl.attr('data-src') || (srcset ? srcset.split(' ')[0] : null);
+            let image = imageEl.attr('src') || imageEl.attr('data-src') || (srcset ? srcset.split(' ')[0] : null);
+            if (image && (image.startsWith('data:image') || image.includes('placeholder'))) image = null;
+            if (image && image.startsWith('//')) image = 'https:' + image;
 
             if (title && link) {
                 products.push({
@@ -57,7 +60,7 @@ export class MeeshoSearcher extends BaseSearcher {
                 if (found.length > 2) { items = found; break; }
             }
 
-            return items.slice(0, 20).map(el => {
+            return items.slice(0, 10).map(el => {
                 const titleEl = el.querySelector('p[class*="StyledName"], p[class*="name"], p');
                 const linkEl = el.querySelector('a');
                 const priceEl = el.querySelector('h5, span[class*="price"]');
