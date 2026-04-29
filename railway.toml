@@ -1,8 +1,7 @@
 # Railway Configuration for Sentix-Prime
-# This file automates the deployment of the multi-service architecture
 
 [build]
-builder = "DOCKER"
+builder = "DOCKERFILE"
 dockerfilePath = "backend/Dockerfile"
 
 [deploy]
@@ -10,20 +9,3 @@ startCommand = "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT}"
 healthcheckPath = "/health"
 healthcheckTimeout = 100
 restartPolicyType = "ON_FAILURE"
-
-[[services]]
-# Scraper Microservice
-name = "scraper"
-source = "scraper/"
-dockerfilePath = "scraper/Dockerfile"
-
-[[services]]
-# Redis Cache
-name = "redis"
-image = "redis:7-alpine"
-
-[[services]]
-# Frontend React App
-name = "frontend"
-source = "frontend/"
-dockerfilePath = "frontend/Dockerfile"
