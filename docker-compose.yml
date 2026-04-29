@@ -1,5 +1,7 @@
+version: "3.8"
 
 services:
+  # --- BACKEND API ---
   api:
     build:
       context: .
@@ -14,31 +16,31 @@ services:
       - scraper
       - redis
     volumes:
-      - ./backend/data:/app/backend/data
-      - ./backend/logs:/app/backend/logs
+      - ./backend/data:/app/data
+      - ./backend/logs:/app/logs
     networks:
       - sentix-net
 
+  # --- CELERY WORKER ---
   ai_worker:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    command: ["celery", "-A", "backend.worker", "worker", "--loglevel=info"]
+    command: [ "celery", "-A", "backend.worker", "worker", "--loglevel=info" ]
     environment:
       - REDIS_URL=redis://redis:6379/0
       - GEMINI_API_KEY=${GEMINI_API_KEY}
     depends_on:
       - redis
     volumes:
-      - ./backend/data:/app/backend/data
-      - ./backend/logs:/app/backend/logs
+      - ./backend/data:/app/data
     networks:
       - sentix-net
 
+  # --- SCRAPER SERVICE ---
   scraper:
     build:
       context: ./scraper
-      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
@@ -46,6 +48,7 @@ services:
     networks:
       - sentix-net
 
+  # --- DATABASE ---
   redis:
     image: redis:7-alpine
     ports:
@@ -55,6 +58,7 @@ services:
     networks:
       - sentix-net
 
+  # --- MONITORING ---
   prometheus:
     image: prom/prometheus:latest
     ports:
@@ -68,23 +72,21 @@ services:
     image: grafana/grafana:latest
     ports:
       - "3001:3000"
-    volumes:
-      - ./grafana/provisioning:/etc/grafana/provisioning
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
     depends_on:
       - prometheus
     networks:
       - sentix-net
 
+  # --- FRONTEND ---
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://localhost:5000
+      - VITE_API_URL=${VITE_API_URL}
     depends_on:
       - api
     networks:
