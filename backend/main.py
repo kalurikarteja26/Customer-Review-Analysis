@@ -6,6 +6,7 @@ import traceback
 import random
 import time
 import httpx
+import uuid  # <-- Moved safely to the top!
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 
@@ -53,7 +54,6 @@ recommendation_service = AIRecommendationService()
 gemini_service = GeminiAIService()
 
 # --- REDIS CONFIGURATION (UPSTASH) ---
-# Note: Render will provide REDIS_URL from your environment settings
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 
@@ -103,33 +103,41 @@ async def prometheus_middleware(request: Request, call_next):
 
 # --- API ENDPOINTS ---
 
-# --- FIX: Removed response_model to allow returning a direct list ---
-@app.post("/product-search")
-async def product_search(req: SearchRequest, response: Response):
-    try:
-        raw_results = await search_engine.search_all(req.query)
-        # --- FIX: Return the raw array directly to the frontend ---
-        return raw_results
-    except Exception as e:
-        logger.error(f"Search error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.post("/product-search")
 async def product_search(req: SearchRequest, response: Response):
     try:
         raw_results = await search_engine.search_all(req.query)
         
-        # --- FIX: Inject data into EVERY field the UI might read ---
+        # --- ULTIMATE UI FIX: Generate IDs and Canonical Wrappers ---
+        canonical_list = []
+        for p in raw_results:
+            # 1. Guarantee every product has a unique ID so React doesn't drop it
+            p_id = str(uuid.uuid4())
+            if not p.get("id"):
+                p["id"] = p_id
+                
+            # 2. Wrap it in a "Canonical" shape with a variants list
+            canonical_list.append({
+                "id": f"canon_{p_id}",
+                "title": p.get("title", "Unknown Product"),
+                "image": p.get("image", ""),
+                "min_price": p.get("price", 0) or 0,
+                "max_price": p.get("price", 0) or 0,
+                "variants": [p], # <--- This is what the UI is probably looking for!
+                "platform_count": 1
+            })
+            
         return {
             "status": "success",
             "query": req.query,
-            "canonical_products": raw_results,  # Put the 20 products here
-            "products": raw_results,            # And here
-            "best_product": raw_results[0] if raw_results else None # Give it a top product
+            "canonical_products": canonical_list, 
+            "products": raw_results,
+            "best_product": canonical_list[0] if canonical_list else None
         }
     except Exception as e:
         logger.error(f"Search error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/image-proxy")
 async def image_proxy(url: str):
     try:
