@@ -113,21 +113,30 @@ async def product_search(req: SearchRequest, response: Response):
             p_id = str(uuid.uuid4())
             p["id"] = p.get("id") or p_id
             
-            # --- THE CRASH FIX: Guarantee every list exists so React's [0] works! ---
+            # --- GOD MODE: Guarantee EVERY field exists so React cannot crash ---
             safe_image = p.get("image") or ""
+            p["image"] = safe_image
             p["images"] = p.get("images") or ([safe_image] if safe_image else [])
             p["category"] = p.get("category") or ["General"]
             p["features"] = p.get("features") or []
             p["feature_images"] = p.get("feature_images") or []
             p["reviews"] = p.get("reviews") or []
+            p["specifications"] = p.get("specifications") or {}
+            p["sentiment_analysis"] = p.get("sentiment_analysis") or {}
+            p["feature_match_scores"] = p.get("feature_match_scores") or {}
+            p["rating_distribution"] = p.get("rating_distribution") or {"5": 0, "4": 0, "3": 0, "2": 0, "1": 0}
+            p["price_history"] = p.get("price_history") or []
+            p["rating"] = p.get("rating") or 0
+            p["review_count"] = p.get("review_count") or 0
+            p["discount_percentage"] = p.get("discount_percentage") or 0
             
             # Wrap it safely
             canonical_list.append({
                 "id": f"canon_{p_id}",
                 "title": p.get("title", "Unknown Product"),
                 "image": safe_image,
-                "images": p["images"], # UI can now safely do images[0]
-                "category": p["category"], # UI can now safely do category[0]
+                "images": p["images"], 
+                "category": p["category"], 
                 "min_price": p.get("price", 0) or 0,
                 "max_price": p.get("price", 0) or 0,
                 "variants": [p],
@@ -144,6 +153,7 @@ async def product_search(req: SearchRequest, response: Response):
     except Exception as e:
         logger.error(f"Search error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/image-proxy")
 async def image_proxy(url: str):
     try:
