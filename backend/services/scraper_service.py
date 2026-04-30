@@ -9,14 +9,16 @@ import httpx
 from fastapi import HTTPException
 from backend.services.logger import logger, Timer
 
-SCRAPER_URL = os.getenv("SCRAPER_URL", "http://localhost:3000")
+# Get the Scraper URL from Render (defaults to local if not set)
+SCRAPER_URL = os.getenv("SCRAPER_URL", "http://localhost:3000").rstrip("/")
 
 async def run_node_scraper(url: str) -> dict:
     """Deep-dive: fetch full product data for a single URL via Microservice."""
     logger.info(f"SCRAPE url={url[:80]}")
     with Timer() as t:
         try:
-            async with httpx.AsyncClient(timeout=45.0) as client:
+            # --- FIX: Timeout increased to 95 seconds ---
+            async with httpx.AsyncClient(timeout=95.0) as client:
                 res = await client.post(f"{SCRAPER_URL}/process", json={"url": url})
             
             if res.status_code == 404:
@@ -29,7 +31,7 @@ async def run_node_scraper(url: str) -> dict:
             
             data = res.json()
         except httpx.TimeoutException:
-            raise HTTPException(status_code=504, detail="Scraper timed out after 45s")
+            raise HTTPException(status_code=504, detail="Scraper timed out after 95s")
         except HTTPException:
             raise
         except Exception as e:
@@ -63,7 +65,8 @@ async def run_node_search(query: str) -> list:
     logger.info(f"SEARCH query={query!r}")
     with Timer() as t:
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            # --- FIX: Timeout increased to 95 seconds ---
+            async with httpx.AsyncClient(timeout=95.0) as client:
                 res = await client.get(f"{SCRAPER_URL}/search", params={"q": query})
             
             if res.status_code != 200:
@@ -71,7 +74,7 @@ async def run_node_search(query: str) -> list:
             
             results = res.json()
         except httpx.TimeoutException:
-            raise HTTPException(status_code=504, detail="Search timed out after 60s")
+            raise HTTPException(status_code=504, detail="Search timed out after 95s")
         except HTTPException:
             raise
         except Exception as e:
