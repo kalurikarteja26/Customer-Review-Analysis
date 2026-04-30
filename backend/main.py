@@ -114,19 +114,22 @@ async def product_search(req: SearchRequest, response: Response):
         logger.error(f"Search error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/product-analysis", response_model=AnalysisResponse)
-async def product_analysis(req: AnalysisRequest, response: Response):
-    cached = get_cache(f"analysis:{req.url}")
-    if cached:
-        return AnalysisResponse(status="success", **cached)
-    
+@app.post("/product-search")
+async def product_search(req: SearchRequest, response: Response):
     try:
-        scraped_data = await search_engine.get_product_details(req.url)
-        # Detailed analysis logic goes here...
-        return AnalysisResponse(status="success", product=Product(title=scraped_data.get("title"), price="N/A"))
+        raw_results = await search_engine.search_all(req.query)
+        
+        # --- FIX: Inject data into EVERY field the UI might read ---
+        return {
+            "status": "success",
+            "query": req.query,
+            "canonical_products": raw_results,  # Put the 20 products here
+            "products": raw_results,            # And here
+            "best_product": raw_results[0] if raw_results else None # Give it a top product
+        }
     except Exception as e:
-        return AnalysisResponse(status="error", product=Product(title="Error", price="N/A"))
-
+        logger.error(f"Search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 @app.get("/image-proxy")
 async def image_proxy(url: str):
     try:
