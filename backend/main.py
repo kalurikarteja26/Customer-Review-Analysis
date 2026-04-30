@@ -72,15 +72,9 @@ def set_cache(key: str, value: dict, expire: int = 1800):
 
 # --- CORE ROUTES ---
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 async def root():
-    """Fixes Render 404 Health Check error."""
-    return {
-        "status": "online",
-        "service": "Sentix AI Backend",
-        "timestamp": datetime.now().isoformat(),
-        "docs": "/docs"
-    }
+    return {"status": "online", "message": "Sentix AI Backend is running"}
 
 @app.get("/health")
 async def health_check():
