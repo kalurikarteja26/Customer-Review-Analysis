@@ -108,22 +108,29 @@ async def product_search(req: SearchRequest, response: Response):
     try:
         raw_results = await search_engine.search_all(req.query)
         
-        # --- ULTIMATE UI FIX: Generate IDs and Canonical Wrappers ---
         canonical_list = []
         for p in raw_results:
-            # 1. Guarantee every product has a unique ID so React doesn't drop it
             p_id = str(uuid.uuid4())
-            if not p.get("id"):
-                p["id"] = p_id
-                
-            # 2. Wrap it in a "Canonical" shape with a variants list
+            p["id"] = p.get("id") or p_id
+            
+            # --- THE CRASH FIX: Guarantee every list exists so React's [0] works! ---
+            safe_image = p.get("image") or ""
+            p["images"] = p.get("images") or ([safe_image] if safe_image else [])
+            p["category"] = p.get("category") or ["General"]
+            p["features"] = p.get("features") or []
+            p["feature_images"] = p.get("feature_images") or []
+            p["reviews"] = p.get("reviews") or []
+            
+            # Wrap it safely
             canonical_list.append({
                 "id": f"canon_{p_id}",
                 "title": p.get("title", "Unknown Product"),
-                "image": p.get("image", ""),
+                "image": safe_image,
+                "images": p["images"], # UI can now safely do images[0]
+                "category": p["category"], # UI can now safely do category[0]
                 "min_price": p.get("price", 0) or 0,
                 "max_price": p.get("price", 0) or 0,
-                "variants": [p], # <--- This is what the UI is probably looking for!
+                "variants": [p],
                 "platform_count": 1
             })
             
@@ -137,7 +144,6 @@ async def product_search(req: SearchRequest, response: Response):
     except Exception as e:
         logger.error(f"Search error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
 @app.get("/image-proxy")
 async def image_proxy(url: str):
     try:
