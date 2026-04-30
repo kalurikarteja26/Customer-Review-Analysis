@@ -103,12 +103,13 @@ async def prometheus_middleware(request: Request, call_next):
 
 # --- API ENDPOINTS ---
 
-@app.post("/product-search", response_model=SearchResponse)
+# --- FIX: Removed response_model to allow returning a direct list ---
+@app.post("/product-search")
 async def product_search(req: SearchRequest, response: Response):
     try:
         raw_results = await search_engine.search_all(req.query)
-        # Logic for grouping and AI ranking (Simplified for clarity)
-        return SearchResponse(status="success", query=req.query, canonical_products=[], products=raw_results)
+        # --- FIX: Return the raw array directly to the frontend ---
+        return raw_results
     except Exception as e:
         logger.error(f"Search error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
